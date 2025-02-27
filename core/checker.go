@@ -25,10 +25,12 @@ func showProgress(percent int) {
 	fullBlocks := percent / 5
 	emptyBlocks := 20 - fullBlocks
 
-	bar := fmt.Sprintf("\r[%s%s] %d%%",
+	bar := fmt.Sprintf("\r    [%s%s] %s%d%%%s",
 		strings.Repeat(BlockFull, fullBlocks),
 		strings.Repeat(BlockEmpty, emptyBlocks),
+		Green,
 		percent,
+		Reset,
 	)
 
 	fmt.Printf("\r%s", bar)
@@ -37,8 +39,7 @@ func showProgress(percent int) {
 func RunChecks() {
 	var categorizedResults []CheckResult
 
-	fmt.Println("Running system setup checks...")
-	fmt.Println()
+	fmt.Println(Bold + "🚀 Running system setup checks...")
 
 	for _, module := range RegisteredModules {
 		fmt.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name())
@@ -49,7 +50,6 @@ func RunChecks() {
 		}
 
 		showProgress(100)
-		fmt.Println()
 
 		errors, warnings, successes := module.CheckRequirements(map[string]interface{}{
 			"environment": "production",
@@ -65,6 +65,7 @@ func RunChecks() {
 		categorizedResults = append(categorizedResults, result)
 	}
 
+	fmt.Println()
 	fmt.Println()
 
 	printResults(categorizedResults)
