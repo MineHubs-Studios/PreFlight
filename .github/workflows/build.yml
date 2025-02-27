@@ -40,4 +40,4 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           mkdir -p dist
-          go build -o dist/preflight-${{ matrix.goos }}-${{ matrix.goarch }} -v ./...
+          go build -o dist/preflight-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} -v .
