@@ -121,16 +121,18 @@ func finalMessage(results []CheckResult) {
 	var exitCode int
 
 	if totalErrors > 0 {
-		finalMessage = Bold + Red + "System setup check completed. Resolve the above issues before proceeding." + Reset
+		finalMessage = Bold + Red + "System setup check completed, resolve the above issues before proceeding." + Reset
 		exitCode = 1
 	} else if totalWarnings > 0 {
-		finalMessage = Bold + Yellow + "System setup check completed with warnings. Review them before proceeding." + Reset
+		finalMessage = Bold + Yellow + "System setup check completed with warnings, review them before proceeding." + Reset
 		exitCode = 0
 	} else {
 		finalMessage = Bold + Green + "System setup check completed successfully! All required tools and configurations are in place." + Reset
 		exitCode = 0
 	}
 
-	fmt.Println("\n" + finalMessage)
+	currentTime := time.Now().Format("02-01-2006 15:04:05")
+
+	fmt.Printf("\n%s (Completed at: %s)\n", finalMessage, currentTime)
 	os.Exit(exitCode)
 }
