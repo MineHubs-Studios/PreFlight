@@ -56,7 +56,7 @@ func RunChecks() {
 		})
 
 		result := CheckResult{
-			Scope:     utils.CapitalizeWords(module.Name()),
+			Scope:     module.Name(),
 			Errors:    errors,
 			Warnings:  warnings,
 			Successes: successes,
