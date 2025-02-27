@@ -13,7 +13,7 @@ import (
 type NpmModule struct{}
 
 func (n NpmModule) Name() string {
-	return "npm"
+	return "NPM"
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
