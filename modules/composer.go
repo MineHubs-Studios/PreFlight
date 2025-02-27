@@ -10,7 +10,7 @@ import (
 type ComposerModule struct{}
 
 func (c ComposerModule) Name() string {
-	return "composer"
+	return "Composer"
 }
 
 func (c ComposerModule) CheckRequirements(context map[string]interface{}) (errors []string, warnings []string, successes []string) {
