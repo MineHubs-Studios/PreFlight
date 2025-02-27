@@ -24,6 +24,7 @@ func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []s
 		return errors, warnings, successes
 	}
 
+	// READ PHP REQUIREMENTS FROM composer.json.
 	phpVersionRequirement, requiredExtensions, _, found := utils.ReadComposerJSON()
 
 	if !found {
@@ -31,6 +32,7 @@ func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []s
 		return errors, warnings, successes
 	}
 
+	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
 		if !strings.Contains(phpVersion, phpVersionRequirement) {
 			errors = append(errors, fmt.Sprintf(
@@ -42,6 +44,7 @@ func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []s
 		}
 	}
 
+	// CHECK REQUIRED PHP EXTENSIONS.
 	for _, ext := range requiredExtensions {
 		if !CheckPHPExtension(ext) {
 			errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
