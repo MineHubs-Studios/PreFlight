@@ -1,6 +1,6 @@
 # This workflow will build a golang project
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-name: Build and Release PreFlight
+name: Build
 
 on:
   push:
@@ -12,9 +12,17 @@ on:
 
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
-    name: Build PreFlight binaries
+    if: ${{ !contains(github.event.head_commit.message, '[ci skip]') && (github.event.pull_request == null || github.event.pull_request.head.repo.full_name == github.repository) }}
+
     runs-on: ubuntu-latest
 
     strategy:
@@ -23,8 +31,10 @@ jobs:
         goarch: [amd64]
 
     steps:
-      - name: Check out code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -42,3 +52,6 @@ jobs:
         run: |
           mkdir -p dist
           go build -o dist/preflight-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} -v .
+
+      - name: Test Go
+        run: go test
