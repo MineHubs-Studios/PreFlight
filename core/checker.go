@@ -1,11 +1,19 @@
 package core
 
 import (
+	"PreFlight/utils"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 )
+
+type CheckResult struct {
+	Scope     string
+	Errors    []string
+	Warnings  []string
+	Successes []string
+}
 
 var RegisteredModules []Module
 
@@ -27,7 +35,7 @@ func showProgress(percent int) {
 }
 
 func RunChecks() {
-	var totalErrors, totalWarnings, totalSuccesses []string
+	var categorizedResults []CheckResult
 
 	fmt.Println("Running system setup checks...")
 	fmt.Println()
@@ -47,52 +55,72 @@ func RunChecks() {
 			"environment": "production",
 		})
 
-		totalErrors = append(totalErrors, errors...)
-		totalWarnings = append(totalWarnings, warnings...)
-		totalSuccesses = append(totalSuccesses, successes...)
+		result := CheckResult{
+			Scope:     utils.CapitalizeWords(module.Name()),
+			Errors:    errors,
+			Warnings:  warnings,
+			Successes: successes,
+		}
+
+		categorizedResults = append(categorizedResults, result)
 	}
 
 	fmt.Println()
 
-	printResults(totalErrors, totalWarnings, totalSuccesses)
-
-	finalMessageAndExit(totalErrors, totalWarnings)
+	printResults(categorizedResults)
+	finalMessage(categorizedResults)
 }
 
-func printResults(errors []string, warnings []string, successes []string) {
-	if len(successes) > 0 {
-		fmt.Println("\n" + Bold + Green + "Successes:" + Reset)
+func printResults(results []CheckResult) {
+	for _, result := range results {
+		fmt.Println(Bold + "\nScope: " + result.Scope + Reset)
 
-		for _, msg := range successes {
-			fmt.Println(Green + "  " + CheckMark + " " + msg + Reset)
+		if len(result.Successes) > 0 {
+			fmt.Println(Green + "  Successes:" + Reset)
+			for _, msg := range result.Successes {
+				fmt.Println(Green + "    " + CheckMark + " " + msg + Reset)
+			}
+
+			fmt.Println()
 		}
-	}
 
-	if len(warnings) > 0 {
-		fmt.Println("\n" + Bold + Yellow + "Warnings:" + Reset)
+		if len(result.Warnings) > 0 {
+			fmt.Println(Yellow + "  Warnings:" + Reset)
 
-		for _, msg := range warnings {
-			fmt.Println(Yellow + "  " + WarningSign + " " + msg + Reset)
+			for _, msg := range result.Warnings {
+				fmt.Println(Yellow + "    " + WarningSign + " " + msg + Reset)
+			}
+
+			fmt.Println()
 		}
-	}
 
-	if len(errors) > 0 {
-		fmt.Println("\n" + Bold + Red + "Errors:" + Reset)
+		if len(result.Errors) > 0 {
+			fmt.Println(Red + "  Errors:" + Reset)
 
-		for _, msg := range errors {
-			fmt.Println(Red + "  " + CrossMark + " " + msg + Reset)
+			for _, msg := range result.Errors {
+				fmt.Println(Red + "    " + CrossMark + " " + msg + Reset)
+			}
+
+			fmt.Println()
 		}
 	}
 }
 
-func finalMessageAndExit(errors []string, warnings []string) {
+func finalMessage(results []CheckResult) {
+	var totalErrors, totalWarnings int
+
+	for _, result := range results {
+		totalErrors += len(result.Errors)
+		totalWarnings += len(result.Warnings)
+	}
+
 	var finalMessage string
 	var exitCode int
 
-	if len(errors) > 0 {
+	if totalErrors > 0 {
 		finalMessage = Bold + Red + "System setup check completed. Resolve the above issues before proceeding." + Reset
 		exitCode = 1
-	} else if len(warnings) > 0 {
+	} else if totalWarnings > 0 {
 		finalMessage = Bold + Yellow + "System setup check completed with warnings. Review them before proceeding." + Reset
 		exitCode = 0
 	} else {
