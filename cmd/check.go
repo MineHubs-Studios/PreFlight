@@ -10,6 +10,7 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Checks if all required dependencies are installed",
 	Run: func(cmd *cobra.Command, args []string) {
+		core.RegisterModule(modules.PhpModule{})
 		core.RegisterModule(modules.ComposerModule{})
 		core.RegisterModule(modules.NpmModule{})
 
