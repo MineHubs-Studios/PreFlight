@@ -16,6 +16,4 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-func init() {
-	fmt.Println("🚀 PreFlight CLI Loaded!")
-}
+func init() {}
