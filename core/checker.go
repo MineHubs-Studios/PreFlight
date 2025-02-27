@@ -74,36 +74,38 @@ func RunChecks() {
 
 func printResults(results []CheckResult) {
 	for _, result := range results {
-		fmt.Println(Bold + "\nScope: " + result.Scope + Reset)
+		fmt.Println(Reset + Bold + "\nScope: " + result.Scope + Reset)
 
 		if len(result.Successes) > 0 {
 			fmt.Println(Green + "  Successes:" + Reset)
-			for _, msg := range result.Successes {
-				fmt.Println(Green + "    " + CheckMark + " " + msg + Reset)
-			}
-
+			printIndentedMessages(result.Successes, Green, CheckMark)
 			fmt.Println()
 		}
 
 		if len(result.Warnings) > 0 {
 			fmt.Println(Yellow + "  Warnings:" + Reset)
-
-			for _, msg := range result.Warnings {
-				fmt.Println(Yellow + "    " + WarningSign + " " + msg + Reset)
-			}
-
+			printIndentedMessages(result.Warnings, Yellow, WarningSign)
 			fmt.Println()
 		}
 
 		if len(result.Errors) > 0 {
 			fmt.Println(Red + "  Errors:" + Reset)
-
-			for _, msg := range result.Errors {
-				fmt.Println(Red + "    " + CrossMark + " " + msg + Reset)
-			}
-
+			printIndentedMessages(result.Errors, Red, CrossMark)
 			fmt.Println()
 		}
+	}
+}
+
+// printIndentedMessages håndterer indrykning af beskeder baseret på deres type.
+func printIndentedMessages(messages []string, color string, symbol string) {
+	for _, msg := range messages {
+		indentLevel := 4
+
+		if strings.Contains(strings.ToLower(msg), "composer package") || strings.Contains(strings.ToLower(msg), "npm package") {
+			indentLevel = 6
+		}
+
+		fmt.Printf("%s%s %s %s\n", color, strings.Repeat(" ", indentLevel), symbol, msg)
 	}
 }
 
