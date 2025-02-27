@@ -1,0 +1,27 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    reviewers:
+      - "JacobJoergensen"
+    labels:
+      - "github-dependencies"
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - "**"
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    reviewers:
+      - "JacobJoergensen"
+    labels:
+      - "go-dependencies"
+    groups:
+      go-dependencies:
+        patterns:
+          - "**"
