@@ -1,7 +1,7 @@
 package core
 
 import (
-	"PreFlight/modules"
+	"PreFlight/utils"
 )
 
 type DependencyResult struct {
@@ -12,13 +12,13 @@ type DependencyResult struct {
 func GetAllDependencies() DependencyResult {
 	var result DependencyResult
 
-	_, _, composerDeps, composerFound := modules.ReadComposerJSON()
+	_, _, composerDeps, composerFound := utils.ReadComposerJSON()
 
 	if composerFound {
 		result.ComposerDeps = composerDeps
 	}
 
-	_, packageFound, npmDeps := modules.ReadPackageJSON()
+	_, packageFound, npmDeps := utils.ReadPackageJSON()
 
 	if packageFound && len(npmDeps) > 0 {
 		result.NpmDeps = npmDeps
