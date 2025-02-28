@@ -1,7 +1,7 @@
 package core
 
 import (
-	"PreFlight/utils"
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -15,43 +15,54 @@ type CheckResult struct {
 	Successes []string
 }
 
-var RegisteredModules []Module
-
-func RegisterModule(module Module) {
-	RegisteredModules = append(RegisteredModules, module)
-}
-
 func showProgress(percent int) {
 	fullBlocks := percent / 5
 	emptyBlocks := 20 - fullBlocks
 
-	bar := fmt.Sprintf("\r    [%s%s] %s%d%%%s",
-		strings.Repeat(BlockFull, fullBlocks),
-		strings.Repeat(BlockEmpty, emptyBlocks),
-		Green,
-		percent,
-		Reset,
-	)
+	var sb strings.Builder
 
-	fmt.Printf("\r%s", bar)
+	sb.WriteString("\r    [")
+	sb.WriteString(strings.Repeat(BlockFull, fullBlocks))
+	sb.WriteString(strings.Repeat(BlockEmpty, emptyBlocks))
+	sb.WriteString("] ")
+	sb.WriteString(Green)
+	sb.WriteString(fmt.Sprintf("%d", percent))
+	sb.WriteString("%")
+	sb.WriteString(Reset)
+
+	fmt.Print(sb.String())
 }
 
-func RunChecks() {
+func RunChecks(ctx context.Context) {
 	var categorizedResults []CheckResult
 
 	fmt.Println(Bold + "🚀 Running system setup checks...")
 
-	for _, module := range RegisteredModules {
+	for _, module := range GetModules() {
+		// CHECK FOR CANCELLATION.
+		select {
+		case <-ctx.Done():
+			fmt.Println("\nChecks cancelled...")
+			return
+		default:
+		}
+
+		moduleStart := time.Now()
 		fmt.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name())
 
 		for progress := 0; progress <= 100; progress += 25 {
-			showProgress(progress)
-			time.Sleep(200 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				showProgress(progress)
+				time.Sleep(200 * time.Millisecond)
+			}
 		}
 
 		showProgress(100)
 
-		errors, warnings, successes := module.CheckRequirements(map[string]interface{}{
+		errors, warnings, successes := module.CheckRequirements(ctx, map[string]interface{}{
 			"environment": "production",
 		})
 
@@ -63,6 +74,9 @@ func RunChecks() {
 		}
 
 		categorizedResults = append(categorizedResults, result)
+
+		moduleDuration := time.Since(moduleStart)
+		fmt.Printf("\n      %s⏱ Completed in: %dms%s\n", Yellow, moduleDuration.Milliseconds(), Reset)
 	}
 
 	fmt.Println()
@@ -96,7 +110,7 @@ func printResults(results []CheckResult) {
 	}
 }
 
-// printIndentedMessages håndterer indrykning af beskeder baseret på deres type.
+// printIndentedMessages
 func printIndentedMessages(messages []string, color string, symbol string) {
 	for _, msg := range messages {
 		indentLevel := 4
