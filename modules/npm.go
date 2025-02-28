@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
-	"regexp"
 	"strings"
 )
 
@@ -42,7 +41,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	// VALIDATE NODE VERSION IF SPECIFIC VERSION IS REQUIRED.
 	if requiredNodeVersion != "" {
-		if isValid, feedback := validateVersion(nodeVersionOutput, requiredNodeVersion); isValid {
+		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, requiredNodeVersion); isValid {
 			successes = append(successes, feedback)
 		} else {
 			errors = append(errors, feedback)
@@ -99,70 +98,6 @@ func handleLockFileWarnings(warnings *[]string) {
 	} else {
 		*warnings = append(*warnings, "Neither package.json nor lock files are found.")
 	}
-}
-
-// VALIDATE IF INSTALLED NODE VERSION MATCHES THE REQUIRED VERSION.
-func validateVersion(installedVersion, requiredVersion string) (bool, string) {
-	installedVersion = strings.TrimPrefix(installedVersion, "v")
-
-	if !matchVersionConstraint(installedVersion, requiredVersion) {
-		return false, fmt.Sprintf("Node.js version %s is required, but version %s is installed.", requiredVersion, installedVersion)
-	}
-
-	return true, fmt.Sprintf("Required Node.js version %s is installed.", requiredVersion)
-}
-
-// MATCH NODE VERSION CONSTRAINTS LIKE >=, >, <=, < AND ^.
-func matchVersionConstraint(installed, required string) bool {
-	switch {
-	case strings.HasPrefix(required, ">="):
-		return compareVersions(installed, required[2:]) >= 0
-	case strings.HasPrefix(required, ">"):
-		return compareVersions(installed, required[1:]) > 0
-	case strings.HasPrefix(required, "<="):
-		return compareVersions(installed, required[2:]) <= 0
-	case strings.HasPrefix(required, "<"):
-		return compareVersions(installed, required[1:]) < 0
-	case strings.HasPrefix(required, "^"):
-		return compareVersionsWithinMajor(installed, required[1:])
-	default:
-		return installed == required
-	}
-}
-
-// COMPARE TWO VERSIONS RETURNING -1, 0, OR 1 FOR LESS, EQUAL, OR GREATER.
-func compareVersions(v1, v2 string) int {
-	v1Parts, v2Parts := parseSemver(v1), parseSemver(v2)
-	for i := 0; len(v1Parts) > i && len(v2Parts) > i; i++ {
-		if v1Parts[i] < v2Parts[i] {
-			return -1
-		} else if v1Parts[i] > v2Parts[i] {
-			return 1
-		}
-	}
-	return 0
-}
-
-// COMPARE INSTALLED VERSION WITHIN SAME MAJOR VERSION.
-func compareVersionsWithinMajor(installed, required string) bool {
-	installedParts, requiredParts := parseSemver(installed), parseSemver(required)
-	if len(installedParts) == 0 || len(requiredParts) == 0 || installedParts[0] != requiredParts[0] {
-		return false
-	}
-	return compareVersions(installed, required) >= 0
-}
-
-// PARSE SEMANTIC VERSION INTO INTEGERS FOR COMPARISON.
-func parseSemver(version string) []int {
-	parts := regexp.MustCompile(`[0-9]+`).FindAllString(version, -1)
-	parsed := make([]int, len(parts))
-	for i, part := range parts {
-		_, err := fmt.Sscanf(part, "%d", &parsed[i])
-		if err != nil {
-			return nil
-		}
-	}
-	return parsed
 }
 
 // CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
