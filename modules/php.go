@@ -2,6 +2,7 @@ package modules
 
 import (
 	"PreFlight/utils"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -13,9 +14,15 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
-func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+	select {
+	case <-ctx.Done():
+		return nil, nil, nil
+	default:
+	}
+
 	// CHECK IF PHP IS INSTALLED.
-	phpInstalled, phpVersion := isPhpInstalled()
+	phpInstalled, phpVersion := isPhpInstalled(ctx)
 
 	if phpInstalled {
 		successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
@@ -46,7 +53,7 @@ func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []s
 
 	// CHECK REQUIRED PHP EXTENSIONS.
 	for _, ext := range requiredExtensions {
-		if !CheckPHPExtension(ext) {
+		if !CheckPHPExtension(ctx, ext) {
 			errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
 		} else {
 			successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
@@ -57,8 +64,8 @@ func (p PhpModule) CheckRequirements(context map[string]interface{}) (errors []s
 }
 
 // CHECK IF PHP IS INSTALLED AND RETURN THE VERSION IF AVAILABLE.
-func isPhpInstalled() (bool, string) {
-	cmd := exec.Command("php", "--version")
+func isPhpInstalled(ctx context.Context) (bool, string) {
+	cmd := exec.CommandContext(ctx, "php", "--version")
 	output, err := cmd.Output()
 
 	if err != nil {
@@ -77,8 +84,8 @@ func isPhpInstalled() (bool, string) {
 }
 
 // CheckPHPExtension CHECK IF A SPECIFIC PHP EXTENSION IS INSTALLED.
-func CheckPHPExtension(extension string) bool {
-	cmd := exec.Command("php", "-m")
+func CheckPHPExtension(ctx context.Context, extension string) bool {
+	cmd := exec.CommandContext(ctx, "php", "-m")
 	output, err := cmd.Output()
 
 	if err != nil {
