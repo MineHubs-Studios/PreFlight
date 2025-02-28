@@ -6,7 +6,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// listCmd represents the list command
+// listCmd REPRESENTS THE LIST COMMAND.
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all required dependencies for this project\n",
@@ -27,6 +27,7 @@ var listCmd = &cobra.Command{
 		}
 
 		fmt.Println("\n" + core.Bold + "NPM Dependencies:" + core.Reset)
+
 		if len(dependencies.NpmDeps) > 0 {
 			for _, dep := range dependencies.NpmDeps {
 				fmt.Printf(core.Green+" "+core.CheckMark+"- %s\n", dep+core.Reset)
