@@ -115,7 +115,9 @@ func printMessages(messages []string, color string, symbol string) {
 	for _, msg := range messages {
 		indentLevel := 4
 
-		if strings.Contains(strings.ToLower(msg), "composer package") || strings.Contains(strings.ToLower(msg), "npm package") {
+		if strings.Contains(strings.ToLower(msg), "composer package") ||
+			strings.Contains(strings.ToLower(msg), "npm package") ||
+			strings.Contains(strings.ToLower(msg), "php extension") {
 			indentLevel = 6
 		}
 
