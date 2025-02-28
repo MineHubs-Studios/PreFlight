@@ -28,12 +28,28 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
 
 	// READ package.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
-	requiredNodeVersion, packageFound, requiredDeps := utils.ReadPackageJSON()
+	requiredNodeVersion, found, requiredDeps := utils.ReadPackageJSON()
 
 	// HANDLE MISSING package.json.
-	if !packageFound {
+	if !found {
 		errors = append(errors, "package.json not found.")
-		handleLockFileWarnings(&warnings)
+
+		lockFiles := []string{"package-lock.json", "pnpm-lock.yaml"}
+		lockFound := false
+
+		for _, file := range lockFiles {
+			if _, err := os.Stat(file); err == nil {
+				lockFound = true
+				break
+			}
+		}
+
+		if lockFound {
+			warnings = append(warnings, "package.json not found, but a lock file exists. Ensure package.json is included in your project.")
+		} else {
+			warnings = append(warnings, "Neither package.json nor lock files are found.")
+		}
+
 		return errors, warnings, successes
 	}
 
@@ -79,25 +95,6 @@ func isNodeInstalled(ctx context.Context, errors *[]string, successes *[]string)
 	*successes = append(*successes, fmt.Sprintf("Node.js is installed with version %s.", installedVersion))
 
 	return installedVersion
-}
-
-// HANDLE MISSING package.json BY CHECKING FOR LOCK FILES.
-func handleLockFileWarnings(warnings *[]string) {
-	lockFiles := []string{"package-lock.json", "pnpm-lock.yaml"}
-	found := false
-
-	for _, file := range lockFiles {
-		if _, err := os.Stat(file); err == nil {
-			found = true
-			break
-		}
-	}
-
-	if found {
-		*warnings = append(*warnings, "package.json not found, but a lock file exists. Ensure package.json is included in your project.")
-	} else {
-		*warnings = append(*warnings, "Neither package.json nor lock files are found.")
-	}
 }
 
 // CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
