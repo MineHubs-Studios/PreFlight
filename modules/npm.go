@@ -3,6 +3,7 @@ package modules
 import (
 	"PreFlight/utils"
 	"bytes"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -17,9 +18,15 @@ func (n NpmModule) Name() string {
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
-func (n NpmModule) CheckRequirements(context map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+	select {
+	case <-ctx.Done():
+		return nil, nil, nil
+	default:
+	}
+
 	// CHECK IF NODE IS INSTALLED.
-	nodeVersionOutput := isNodeInstalled(&errors, &successes)
+	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
 
 	// READ package.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
 	requiredNodeVersion, packageFound, requiredDeps := utils.ReadPackageJSON()
@@ -46,7 +53,7 @@ func (n NpmModule) CheckRequirements(context map[string]interface{}) (errors []s
 
 	// CHECK ALL NPM PACKAGES DEFINED IN package.json.
 	for _, dep := range requiredDeps {
-		if !checkNpmPackage(dep) {
+		if !checkNpmPackage(ctx, dep) {
 			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `npm install %s`.", dep, dep))
 		} else {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
@@ -57,8 +64,8 @@ func (n NpmModule) CheckRequirements(context map[string]interface{}) (errors []s
 }
 
 // VALIDATE NODE INSTALLATION AND OBTAIN INSTALLED NODE VERSION.
-func isNodeInstalled(errors *[]string, successes *[]string) string {
-	cmd := exec.Command("node", "--version")
+func isNodeInstalled(ctx context.Context, errors *[]string, successes *[]string) string {
+	cmd := exec.CommandContext(ctx, "node", "--version")
 	var outBuffer bytes.Buffer
 	cmd.Stdout = &outBuffer
 
@@ -159,8 +166,8 @@ func parseSemver(version string) []int {
 }
 
 // CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
-func checkNpmPackage(packageName string) bool {
-	cmd := exec.Command("npm", "list", packageName, "--depth=0")
+func checkNpmPackage(ctx context.Context, packageName string) bool {
+	cmd := exec.CommandContext(ctx, "npm", "list", packageName, "--depth=0")
 	var outBuffer, errBuffer bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &outBuffer, &errBuffer
 
