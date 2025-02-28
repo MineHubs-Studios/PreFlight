@@ -92,26 +92,26 @@ func printResults(results []CheckResult) {
 
 		if len(result.Successes) > 0 {
 			fmt.Println(Green + "  Successes:" + Reset)
-			printIndentedMessages(result.Successes, Green, CheckMark)
+			printMessages(result.Successes, Green, CheckMark)
 			fmt.Println()
 		}
 
 		if len(result.Warnings) > 0 {
 			fmt.Println(Yellow + "  Warnings:" + Reset)
-			printIndentedMessages(result.Warnings, Yellow, WarningSign)
+			printMessages(result.Warnings, Yellow, WarningSign)
 			fmt.Println()
 		}
 
 		if len(result.Errors) > 0 {
 			fmt.Println(Red + "  Errors:" + Reset)
-			printIndentedMessages(result.Errors, Red, CrossMark)
+			printMessages(result.Errors, Red, CrossMark)
 			fmt.Println()
 		}
 	}
 }
 
-// printIndentedMessages
-func printIndentedMessages(messages []string, color string, symbol string) {
+// printMessages
+func printMessages(messages []string, color string, symbol string) {
 	for _, msg := range messages {
 		indentLevel := 4
 
