@@ -112,13 +112,37 @@ func printResults(results []CheckResult) {
 
 // printMessages
 func printMessages(messages []string, color string, symbol string) {
-	for _, msg := range messages {
-		indentLevel := 4
+	var isUnderVersionMatch bool
 
-		if strings.Contains(strings.ToLower(msg), "composer package") ||
-			strings.Contains(strings.ToLower(msg), "npm package") ||
-			strings.Contains(strings.ToLower(msg), "php extension") {
+	for _, msg := range messages {
+		indentLevel := 2
+		msgLower := strings.ToLower(msg)
+
+		if strings.Contains(msgLower, "version matches") ||
+			(strings.Contains(msgLower, "installed") &&
+				(strings.Contains(msgLower, "php") ||
+					strings.Contains(msgLower, "composer") ||
+					strings.Contains(msgLower, "node.js"))) {
+			isUnderVersionMatch = true
+			indentLevel = 4
+		} else if strings.Contains(msg, "Scope:") {
+			isUnderVersionMatch = false
+			indentLevel = 2
+		} else if strings.Contains(msg, ".json found") {
+			isUnderVersionMatch = true
+			indentLevel = 4
+		} else if !strings.Contains(msgLower, "version") &&
+			!strings.Contains(msgLower, "installed") &&
+			!strings.Contains(msgLower, ".json") {
+			isUnderVersionMatch = false
+		}
+
+		if isUnderVersionMatch && (strings.Contains(msgLower, "composer package") ||
+			strings.Contains(msgLower, "npm package") ||
+			strings.Contains(msgLower, "php extension")) {
 			indentLevel = 6
+		} else if !strings.Contains(msg, "Scope:") {
+			indentLevel = 4
 		}
 
 		fmt.Printf("%s%s %s %s\n", color, strings.Repeat(" ", indentLevel), symbol, msg)
