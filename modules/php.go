@@ -41,13 +41,10 @@ func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
-		if !strings.Contains(phpVersion, phpVersionRequirement) {
-			errors = append(errors, fmt.Sprintf(
-				"PHP version %s is required, but version %s is installed.",
-				phpVersionRequirement, phpVersion,
-			))
-		} else {
+		if isValid, feedback := utils.ValidateVersion(phpVersion, phpVersionRequirement); isValid {
 			successes = append(successes, fmt.Sprintf("Installed PHP version matches the required version: %s.", phpVersionRequirement))
+		} else {
+			errors = append(errors, feedback)
 		}
 	}
 
