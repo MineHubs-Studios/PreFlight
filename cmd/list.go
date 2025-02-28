@@ -11,7 +11,7 @@ var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all required dependencies for this project\n",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Scanning project for dependencies...")
+		fmt.Println(core.Bold + "🔍 Scanning project for dependencies...")
 
 		dependencies := core.GetAllDependencies()
 
