@@ -1,105 +1,178 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 )
 
-var RegisteredModules []Module
-
-func RegisterModule(module Module) {
-	RegisteredModules = append(RegisteredModules, module)
+type CheckResult struct {
+	Scope     string
+	Errors    []string
+	Warnings  []string
+	Successes []string
 }
 
 func showProgress(percent int) {
 	fullBlocks := percent / 5
 	emptyBlocks := 20 - fullBlocks
 
-	bar := fmt.Sprintf("\r[%s%s] %d%%",
-		strings.Repeat(BlockFull, fullBlocks),
-		strings.Repeat(BlockEmpty, emptyBlocks),
-		percent,
-	)
+	var sb strings.Builder
 
-	fmt.Printf("\r%s", bar)
+	sb.WriteString("\r    [")
+	sb.WriteString(strings.Repeat(BlockFull, fullBlocks))
+	sb.WriteString(strings.Repeat(BlockEmpty, emptyBlocks))
+	sb.WriteString("] ")
+	sb.WriteString(Green)
+	sb.WriteString(fmt.Sprintf("%d", percent))
+	sb.WriteString("%")
+	sb.WriteString(Reset)
+
+	fmt.Print(sb.String())
 }
 
-func RunChecks() {
-	var totalErrors, totalWarnings, totalSuccesses []string
+func RunChecks(ctx context.Context) {
+	var categorizedResults []CheckResult
 
-	fmt.Println("Running system setup checks...")
-	fmt.Println()
+	fmt.Println(Bold + "🚀 Running system setup checks...")
 
-	for _, module := range RegisteredModules {
+	for _, module := range GetModules() {
+		// CHECK FOR CANCELLATION.
+		select {
+		case <-ctx.Done():
+			fmt.Println("\nChecks cancelled...")
+			return
+		default:
+		}
+
+		moduleStart := time.Now()
 		fmt.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name())
 
 		for progress := 0; progress <= 100; progress += 25 {
-			showProgress(progress)
-			time.Sleep(200 * time.Millisecond)
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				showProgress(progress)
+				time.Sleep(200 * time.Millisecond)
+			}
 		}
 
 		showProgress(100)
-		fmt.Println()
 
-		errors, warnings, successes := module.CheckRequirements(map[string]interface{}{
+		errors, warnings, successes := module.CheckRequirements(ctx, map[string]interface{}{
 			"environment": "production",
 		})
 
-		totalErrors = append(totalErrors, errors...)
-		totalWarnings = append(totalWarnings, warnings...)
-		totalSuccesses = append(totalSuccesses, successes...)
+		result := CheckResult{
+			Scope:     module.Name(),
+			Errors:    errors,
+			Warnings:  warnings,
+			Successes: successes,
+		}
+
+		categorizedResults = append(categorizedResults, result)
+
+		moduleDuration := time.Since(moduleStart)
+		fmt.Printf("\n      %s⏱ Completed in: %dms%s\n", Yellow, moduleDuration.Milliseconds(), Reset)
 	}
 
 	fmt.Println()
+	fmt.Println()
 
-	printResults(totalErrors, totalWarnings, totalSuccesses)
-
-	finalMessageAndExit(totalErrors, totalWarnings)
+	printResults(categorizedResults)
+	finalMessage(categorizedResults)
 }
 
-func printResults(errors []string, warnings []string, successes []string) {
-	if len(successes) > 0 {
-		fmt.Println("\n" + Bold + Green + "Successes:" + Reset)
+func printResults(results []CheckResult) {
+	for _, result := range results {
+		fmt.Println(Reset + Bold + "\nScope: " + result.Scope + Reset)
 
-		for _, msg := range successes {
-			fmt.Println(Green + "  " + CheckMark + " " + msg + Reset)
+		if len(result.Successes) > 0 {
+			fmt.Println(Green + "  Successes:" + Reset)
+			printMessages(result.Successes, Green, CheckMark)
+			fmt.Println()
 		}
-	}
 
-	if len(warnings) > 0 {
-		fmt.Println("\n" + Bold + Yellow + "Warnings:" + Reset)
-
-		for _, msg := range warnings {
-			fmt.Println(Yellow + "  " + WarningSign + " " + msg + Reset)
+		if len(result.Warnings) > 0 {
+			fmt.Println(Yellow + "  Warnings:" + Reset)
+			printMessages(result.Warnings, Yellow, WarningSign)
+			fmt.Println()
 		}
-	}
 
-	if len(errors) > 0 {
-		fmt.Println("\n" + Bold + Red + "Errors:" + Reset)
-
-		for _, msg := range errors {
-			fmt.Println(Red + "  " + CrossMark + " " + msg + Reset)
+		if len(result.Errors) > 0 {
+			fmt.Println(Red + "  Errors:" + Reset)
+			printMessages(result.Errors, Red, CrossMark)
+			fmt.Println()
 		}
 	}
 }
 
-func finalMessageAndExit(errors []string, warnings []string) {
+// printMessages
+func printMessages(messages []string, color string, symbol string) {
+	var isUnderVersionMatch bool
+
+	for _, msg := range messages {
+		indentLevel := 2
+		msgLower := strings.ToLower(msg)
+
+		if strings.Contains(msgLower, "version matches") ||
+			(strings.Contains(msgLower, "installed") &&
+				(strings.Contains(msgLower, "php") ||
+					strings.Contains(msgLower, "composer") ||
+					strings.Contains(msgLower, "node.js"))) {
+			isUnderVersionMatch = true
+			indentLevel = 4
+		} else if strings.Contains(msg, "Scope:") {
+			isUnderVersionMatch = false
+			indentLevel = 2
+		} else if strings.Contains(msg, ".json found") {
+			isUnderVersionMatch = true
+			indentLevel = 4
+		} else if !strings.Contains(msgLower, "version") &&
+			!strings.Contains(msgLower, "installed") &&
+			!strings.Contains(msgLower, ".json") {
+			isUnderVersionMatch = false
+		}
+
+		if isUnderVersionMatch && (strings.Contains(msgLower, "composer package") ||
+			strings.Contains(msgLower, "npm package") ||
+			strings.Contains(msgLower, "php extension")) {
+			indentLevel = 6
+		} else if !strings.Contains(msg, "Scope:") {
+			indentLevel = 4
+		}
+
+		fmt.Printf("%s%s %s %s\n", color, strings.Repeat(" ", indentLevel), symbol, msg)
+	}
+}
+
+func finalMessage(results []CheckResult) {
+	var totalErrors, totalWarnings int
+
+	for _, result := range results {
+		totalErrors += len(result.Errors)
+		totalWarnings += len(result.Warnings)
+	}
+
 	var finalMessage string
 	var exitCode int
 
-	if len(errors) > 0 {
-		finalMessage = Bold + Red + "System setup check completed. Resolve the above issues before proceeding." + Reset
+	if totalErrors > 0 {
+		finalMessage = Bold + Red + "System setup check completed, resolve the above issues before proceeding." + Reset
 		exitCode = 1
-	} else if len(warnings) > 0 {
-		finalMessage = Bold + Yellow + "System setup check completed with warnings. Review them before proceeding." + Reset
+	} else if totalWarnings > 0 {
+		finalMessage = Bold + Yellow + "System setup check completed with warnings, review them before proceeding." + Reset
 		exitCode = 0
 	} else {
 		finalMessage = Bold + Green + "System setup check completed successfully! All required tools and configurations are in place." + Reset
 		exitCode = 0
 	}
 
-	fmt.Println("\n" + finalMessage)
+	currentTime := time.Now().Format("02-01-2006 15:04:05")
+
+	fmt.Printf("\n%s (Completed at: %s)\n", finalMessage, currentTime)
 	os.Exit(exitCode)
 }

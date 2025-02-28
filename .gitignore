@@ -1,0 +1,13 @@
+# OS GENERATED FILES.
+.DS_Store
+
+# JETBRAINS IDE GENERATED FILES.
+.idea/
+
+# BUILD FILES.
+*.exe
+*.exe~
+
+# GO SPECIFIC.
+*.out
+go.work
