@@ -2,6 +2,7 @@ package modules
 
 import (
 	"PreFlight/utils"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,7 +14,13 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
-func (c ComposerModule) CheckRequirements(context map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+	select {
+	case <-ctx.Done():
+		return nil, nil, nil
+	default:
+	}
+
 	// READ composer.json AND PARSE THE REQUIRED INFORMATION.
 	_, _, composerDeps, found := utils.ReadComposerJSON()
 
@@ -35,7 +42,7 @@ func (c ComposerModule) CheckRequirements(context map[string]interface{}) (error
 
 	// CHECK COMPOSER DEPENDENCIES.
 	for _, dep := range composerDeps {
-		if !CheckComposerPackage(dep) {
+		if !CheckComposerPackage(ctx, dep) {
 			errors = append(errors, fmt.Sprintf("Composer package %s is missing. Run `composer require %s`.", dep, dep))
 		} else {
 			successes = append(successes, fmt.Sprintf("Composer package %s is installed.", dep))
@@ -46,8 +53,8 @@ func (c ComposerModule) CheckRequirements(context map[string]interface{}) (error
 }
 
 // CheckComposerPackage CHECK IF A SPECIFIC COMPOSER PACKAGE IS INSTALLED.
-func CheckComposerPackage(packageName string) bool {
-	cmd := exec.Command("composer", "show", packageName)
+func CheckComposerPackage(ctx context.Context, packageName string) bool {
+	cmd := exec.CommandContext(ctx, "composer", "show", packageName)
 	err := cmd.Run()
 
 	if err != nil {
