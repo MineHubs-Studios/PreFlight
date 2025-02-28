@@ -20,7 +20,7 @@ var listCmd = &cobra.Command{
 
 		if len(dependencies.ComposerDeps) > 0 {
 			for _, dep := range dependencies.ComposerDeps {
-				fmt.Printf(core.Green+" "+core.CheckMark+"- %s\n", dep+core.Reset)
+				fmt.Printf(core.Green + " " + core.CheckMark + "%s\n", dep + core.Reset)
 			}
 		} else {
 			fmt.Println(core.Red + " " + core.CrossMark + " No Composer dependencies found!" + core.Reset)
@@ -30,7 +30,7 @@ var listCmd = &cobra.Command{
 
 		if len(dependencies.NpmDeps) > 0 {
 			for _, dep := range dependencies.NpmDeps {
-				fmt.Printf(core.Green+" "+core.CheckMark+"- %s\n", dep+core.Reset)
+				fmt.Printf(core.Green + " " + core.CheckMark + "%s\n", dep + core.Reset)
 			}
 		} else {
 			fmt.Println(core.Red + " " + core.CrossMark + " No NPM dependencies found!" + core.Reset)
