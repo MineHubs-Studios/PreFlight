@@ -8,13 +8,26 @@ import (
 
 // ValidateVersion CHECK IF AN INSTALLED VERSION MATCHES THE REQUIREMENTS.
 func ValidateVersion(installedVersion, requiredVersion string) (bool, string) {
-	installedVersion = strings.TrimPrefix(installedVersion, "v")
+	if strings.Contains(installedVersion, "PHP") {
+		installedVersion = extractPHPVersion(installedVersion)
+	} else {
+		installedVersion = strings.TrimPrefix(installedVersion, "v")
+	}
 
 	if !MatchVersionConstraint(installedVersion, requiredVersion) {
 		return false, fmt.Sprintf("Version %s is required, but version %s is installed.", requiredVersion, installedVersion)
 	}
 
 	return true, fmt.Sprintf("Required version %s is installed.", requiredVersion)
+}
+
+func extractPHPVersion(phpVersionString string) string {
+	re := regexp.MustCompile(`PHP (\d+\.\d+\.\d+)`)
+	matches := re.FindStringSubmatch(phpVersionString)
+	if len(matches) >= 2 {
+		return matches[1]
+	}
+	return phpVersionString
 }
 
 // MatchVersionConstraint MATCH NODE VERSION CONSTRAINTS LIKE >=, >, <=, < AND ^.
