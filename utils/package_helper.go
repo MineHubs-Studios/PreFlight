@@ -50,6 +50,5 @@ func ReadPackageJSON() (string, []string, bool) {
 		}
 	}
 
-	//return requiredNodeVersion, true, requiredDeps
 	return nodeVersion, npmDeps, true
 }
