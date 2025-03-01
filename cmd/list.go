@@ -4,42 +4,47 @@ import (
 	"PreFlight/core"
 	"fmt"
 	"github.com/spf13/cobra"
+	"strings"
 )
 
-// listCmd REPRESENTS THE LIST COMMAND.
+var (
+	packageManagersList string
+)
+
 var listCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all required dependencies for this project\n",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(core.Bold + "🔍 Scanning project for dependencies...")
+		var pms []string
 
-		dependencies := core.GetAllDependencies()
+		if packageManagersList != "" {
+			pms = strings.Split(packageManagersList, ",")
+			hasNodePM := false
 
-		fmt.Println(" ")
-		fmt.Println(core.Bold + "Composer Dependencies:" + core.Reset)
+			for _, pm := range pms {
+				if pm == "npm" || pm == "pnpm" {
+					if hasNodePM {
+						fmt.Println("Error: You can't use npm and pnpm at the same time.")
+						return
+					}
 
-		if len(dependencies.ComposerDeps) > 0 {
-			for _, dep := range dependencies.ComposerDeps {
-				fmt.Printf(core.Green+" "+core.CheckMark+" %s\n", dep+core.Reset)
+					hasNodePM = true
+				}
 			}
-		} else {
-			fmt.Println(core.Red + " " + core.CrossMark + " No Composer dependencies found!" + core.Reset)
 		}
 
-		fmt.Println("\n" + core.Bold + "NPM Dependencies:" + core.Reset)
-
-		if len(dependencies.NpmDeps) > 0 {
-			for _, dep := range dependencies.NpmDeps {
-				fmt.Printf(core.Green+" "+core.CheckMark+" %s\n", dep+core.Reset)
-			}
-		} else {
-			fmt.Println(core.Red + " " + core.CrossMark + " No NPM dependencies found!" + core.Reset)
-		}
-
-		fmt.Print(" ")
+		dependencies := core.GetAllDependencies(pms)
+		core.PrintDependencies(dependencies)
 	},
 }
 
 func init() {
+	listCmd.Flags().StringVar(
+		&packageManagersList,
+		"pm",
+		"",
+		"Comma-separated list of package managers to list (composer,npm,pnpm)",
+	)
+
 	rootCmd.AddCommand(listCmd)
 }

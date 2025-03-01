@@ -48,5 +48,6 @@ func init() {
 		"",
 		"Comma-separated list of package managers to check (php,composer,npm)",
 	)
+
 	rootCmd.AddCommand(checkCmd)
 }
