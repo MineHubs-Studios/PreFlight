@@ -24,7 +24,7 @@ var listCmd = &cobra.Command{
 			for _, pm := range pms {
 				if pm == "npm" || pm == "pnpm" {
 					if hasNodePM {
-						fmt.Println("Error: You can't use npm and pnpm at the same time.")
+						fmt.Println(core.Red + "Error: You can't use npm and pnpm at the same time.")
 						return
 					}
 
