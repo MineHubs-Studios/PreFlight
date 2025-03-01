@@ -122,7 +122,7 @@ func printMessages(messages []string, color string, symbol string) {
 			(strings.Contains(msgLower, "installed") &&
 				(strings.Contains(msgLower, "php") ||
 					strings.Contains(msgLower, "composer") ||
-					strings.Contains(msgLower, "node.js"))) {
+					strings.Contains(msgLower, "node"))) {
 			isUnderVersionMatch = true
 			indentLevel = 4
 		} else if strings.Contains(msg, "Scope:") {

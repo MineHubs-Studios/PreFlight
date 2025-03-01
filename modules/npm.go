@@ -16,6 +16,18 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
+func determineNpmPackageManager() (command string, lockFile string) {
+	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
+		return "pnpm", "pnpm-lock.yaml"
+	}
+
+	if _, err := os.Stat("package-lock.json"); err == nil {
+		return "npm", "package-lock.json"
+	}
+
+	return "npm", ""
+}
+
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
 func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
 	select {
@@ -24,30 +36,19 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	default:
 	}
 
-	// CHECK IF NODE IS INSTALLED.
-	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
+	// READ package.json TO EXTRACT DEPENDENCIES.
+	_, found, requiredDeps := utils.ReadPackageJSON()
 
-	// READ package.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
-	requiredNodeVersion, found, requiredDeps := utils.ReadPackageJSON()
+	pm, lockFile := determineNpmPackageManager()
 
 	// HANDLE MISSING package.json.
 	if !found {
 		errors = append(errors, "package.json not found.")
 
-		lockFiles := []string{"package-lock.json", "pnpm-lock.yaml"}
-		lockFound := false
-
-		for _, file := range lockFiles {
-			if _, err := os.Stat(file); err == nil {
-				lockFound = true
-				break
-			}
-		}
-
-		if lockFound {
-			warnings = append(warnings, "package.json not found, but a lock file exists. Ensure package.json is included in your project.")
+		if lockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", lockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files are found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, pnpm-lock.yaml) are found.")
 		}
 
 		return errors, warnings, successes
@@ -55,21 +56,12 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	successes = append(successes, "package.json found.")
 
-	// VALIDATE NODE VERSION IF SPECIFIC VERSION IS REQUIRED.
-	if requiredNodeVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, requiredNodeVersion); isValid {
-			successes = append(successes, feedback)
-		} else {
-			errors = append(errors, feedback)
-		}
-	} else {
-		successes = append(successes, "No specific Node.js version is required.")
-	}
-
 	// CHECK ALL NPM PACKAGES DEFINED IN package.json.
 	for _, dep := range requiredDeps {
-		if !checkNpmPackage(ctx, dep) {
-			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `npm install %s`.", dep, dep))
+		//pm := determineNpmPackageManager()
+
+		if !checkNpmPackage(ctx, pm, dep) {
+			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm, dep))
 		} else {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
 		}
@@ -78,34 +70,16 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	return errors, warnings, successes
 }
 
-// VALIDATE NODE INSTALLATION AND OBTAIN INSTALLED NODE VERSION.
-func isNodeInstalled(ctx context.Context, errors *[]string, successes *[]string) string {
-	cmd := exec.CommandContext(ctx, "node", "--version")
-	var outBuffer bytes.Buffer
-	cmd.Stdout = &outBuffer
-
-	err := cmd.Run()
-
-	if err != nil {
-		*errors = append(*errors, "Node.js is not installed. Please install Node.js to use NPM.")
-		return ""
-	}
-
-	installedVersion := strings.TrimSpace(outBuffer.String())
-	*successes = append(*successes, fmt.Sprintf("Node.js is installed with version %s.", installedVersion))
-
-	return installedVersion
-}
-
 // CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
-func checkNpmPackage(ctx context.Context, packageName string) bool {
-	cmd := exec.CommandContext(ctx, "npm", "list", packageName, "--depth=0")
+func checkNpmPackage(ctx context.Context, pm string, packageName string) bool {
+	cmd := exec.CommandContext(ctx, pm, "list", packageName, "--depth=0")
+
 	var outBuffer, errBuffer bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &outBuffer, &errBuffer
 
-	if err := cmd.Run(); err != nil || strings.Contains(errBuffer.String(), "missing") || strings.TrimSpace(outBuffer.String()) == "" {
-		return false
+	if cmd.Run() == nil && !strings.Contains(errBuffer.String(), "missing") && strings.TrimSpace(outBuffer.String()) != "" {
+		return true
 	}
 
-	return true
+	return false
 }
