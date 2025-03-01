@@ -7,49 +7,49 @@ import (
 )
 
 // ReadPackageJSON READS package.json TO EXTRACT NODE VERSION, DEPENDENCIES, AND DEV DEPENDENCIES.
-func ReadPackageJSON() (string, bool, []string) {
+func ReadPackageJSON() (string, []string, bool) {
+	var nodeVersion string
+	var npmDeps []string
+
 	// CHECK IF package.json EXISTS.
-	if _, err := os.Stat("package.json"); os.IsNotExist(err) {
-		return "", false, nil
+	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {
+		return nodeVersion, npmDeps, false
 	}
 
-	// READ package.json FILE CONTENT.
+	// READ package.json FILE.
 	file, err := os.ReadFile("package.json")
 
 	if err != nil {
-		return "", false, nil
+		return nodeVersion, npmDeps, false
 	}
 
 	// PARSE JSON CONTENT FROM package.json.
 	var data map[string]interface{}
 
 	if err := json.Unmarshal(file, &data); err != nil {
-		return "", false, nil
+		return nodeVersion, npmDeps, false
 	}
 
 	// EXTRACT REQUIRED NODE VERSION FROM "engines" SECTION.
-	var requiredNodeVersion string
-
 	if engines, ok := data["engines"].(map[string]interface{}); ok {
 		if node, exists := engines["node"].(string); exists {
-			requiredNodeVersion = strings.TrimSpace(node)
+			nodeVersion = strings.TrimSpace(node)
 		}
 	}
 
 	// EXTRACT DEPENDENCIES AND DEV DEPENDENCIES.
-	var requiredDeps []string
-
 	if dependencies, ok := data["dependencies"].(map[string]interface{}); ok {
 		for dep := range dependencies {
-			requiredDeps = append(requiredDeps, dep)
+			npmDeps = append(npmDeps, dep)
 		}
 	}
 
 	if devDependencies, ok := data["devDependencies"].(map[string]interface{}); ok {
 		for dep := range devDependencies {
-			requiredDeps = append(requiredDeps, dep)
+			npmDeps = append(npmDeps, dep)
 		}
 	}
 
-	return requiredNodeVersion, true, requiredDeps
+	//return requiredNodeVersion, true, requiredDeps
+	return nodeVersion, npmDeps, true
 }

@@ -24,7 +24,7 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 			_, _, composerDeps, _ := utils.ReadComposerJSON()
 			result.Dependencies["composer"] = composerDeps
 		case "npm", "pnpm":
-			_, _, npmDeps := utils.ReadPackageJSON()
+			_, npmDeps, _ := utils.ReadPackageJSON()
 			result.Dependencies["npm"] = npmDeps
 		}
 	}

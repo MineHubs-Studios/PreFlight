@@ -32,7 +32,7 @@ func ReadComposerJSON() (string, []string, []string, bool) {
 		return "", phpExtensions, composerDeps, false
 	}
 
-	// EXTRACT "require" AND "require-dev" SECTIONS.
+	// EXTRACT DEPENDENCIES AND DEV DEPENDENCIES.
 	if require, ok := data["require"].(map[string]interface{}); ok {
 		for dep, version := range require {
 			if dep == "php" {

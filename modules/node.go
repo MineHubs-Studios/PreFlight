@@ -26,10 +26,10 @@ func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]int
 	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
 
 	// VALIDATE NODE VERSION IF SPECIFIC VERSION IS REQUIRED.
-	requiredNodeVersion, found, _ := utils.ReadPackageJSON()
+	nodeVersion, _, found := utils.ReadPackageJSON()
 
-	if found && requiredNodeVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, requiredNodeVersion); isValid {
+	if found && nodeVersion != "" {
+		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, nodeVersion); isValid {
 			successes = append(successes, feedback)
 		} else {
 			errors = append(errors, feedback)

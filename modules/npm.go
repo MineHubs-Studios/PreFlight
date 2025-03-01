@@ -37,7 +37,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	}
 
 	// READ package.json TO EXTRACT DEPENDENCIES.
-	_, found, requiredDeps := utils.ReadPackageJSON()
+	_, requiredDeps, found := utils.ReadPackageJSON()
 
 	pm, lockFile := determineNpmPackageManager()
 
