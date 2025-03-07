@@ -2,7 +2,6 @@ package modules
 
 import (
 	"PreFlight/utils"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -17,14 +16,19 @@ func (c ComposerModule) Name() string {
 }
 
 func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
-	select {
-	case <-ctx.Done():
+	// CHECK IF CONTEXT IS CANCELED.
+	if ctx.Err() != nil {
 		return nil, nil, nil
-	default:
 	}
 
-	// CHECK IF COMPOSER IS INSTALLED.
-	_ = isComposerInstalled(ctx, &errors, &successes)
+	// CHECK IF Composer.js IS INSTALLED AND GET THE VERSION.
+	composerVersion, err := getComposerVersion(ctx)
+
+	if err != nil {
+		errors = append(errors, "Composer is not installed. Please install Composer.")
+	} else {
+		successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
+	}
 
 	// READ composer.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
 	_, _, composerDeps, found := utils.ReadComposerJSON()
@@ -45,10 +49,16 @@ func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string
 
 	successes = append(successes, "composer.json found.")
 
-	// CHECK COMPOSER DEPENDENCIES.
+	// CHECK Composer DEPENDENCIES.
 	for _, dep := range composerDeps {
-		if !CheckComposerPackage(ctx, dep) {
-			errors = append(errors, fmt.Sprintf("Composer package %s is missing. Run `composer require %s`.", dep, dep))
+		if installed, err := isComposerPackageInstalled(ctx, dep); !installed {
+			errorMsg := fmt.Sprintf("Composer package %s is missing. Run `composer require %s`.", dep, dep)
+
+			if err != nil {
+				errorMsg += fmt.Sprintf(" Error: %v", err)
+			}
+
+			errors = append(errors, errorMsg)
 		} else {
 			successes = append(successes, fmt.Sprintf("Composer package %s is installed.", dep))
 		}
@@ -57,38 +67,33 @@ func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string
 	return errors, warnings, successes
 }
 
-func isComposerInstalled(ctx context.Context, errors *[]string, successes *[]string) string {
+// getComposerVersion RETURNS THE INSTALLED Composer VERSION OR AN ERROR.
+func getComposerVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "composer", "--version")
-	var outBuffer bytes.Buffer
-	cmd.Stdout = &outBuffer
-
-	err := cmd.Run()
+	output, err := cmd.Output()
 
 	if err != nil {
-		*errors = append(*errors, "Composer is not installed. Please install Composer.")
-		return ""
+		return "", err
 	}
 
-	version := strings.TrimSpace(outBuffer.String())
+	version := strings.TrimSpace(string(output))
 	versionParts := strings.Split(version, " ")
 
 	if len(versionParts) >= 3 {
-		composerVersion := versionParts[2]
-		*successes = append(*successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
-		return composerVersion
+		return versionParts[2], nil
 	}
 
-	return ""
+	return "", fmt.Errorf("unexpected composer version format: %s", version)
 }
 
-// CheckComposerPackage CHECK IF A SPECIFIC COMPOSER PACKAGE IS INSTALLED.
-func CheckComposerPackage(ctx context.Context, packageName string) bool {
+// isComposerPackageInstalled CHECK IF A SPECIFIC COMPOSER PACKAGE IS INSTALLED.
+func isComposerPackageInstalled(ctx context.Context, packageName string) (bool, error) {
 	cmd := exec.CommandContext(ctx, "composer", "show", packageName)
 	err := cmd.Run()
 
 	if err != nil {
-		return false
+		return false, err
 	}
 
-	return true
+	return true, nil
 }

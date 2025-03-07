@@ -7,49 +7,67 @@ import (
 )
 
 // ReadPackageJSON READS package.json TO EXTRACT NODE VERSION, DEPENDENCIES, AND DEV DEPENDENCIES.
-func ReadPackageJSON() (string, bool, []string) {
+func ReadPackageJSON() (string, []string, bool) {
+	var nodeVersion string
+
+	// PRE-ALLOCATES SLICES WITH SMALL CAPACITY TO AVOID REALLOCATIONS IN COMMON CASES.
+	npmDeps := make([]string, 0, 10)
+
 	// CHECK IF package.json EXISTS.
-	if _, err := os.Stat("package.json"); os.IsNotExist(err) {
-		return "", false, nil
+	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {
+		return nodeVersion, npmDeps, false
 	}
 
-	// READ package.json FILE CONTENT.
+	// READ package.json FILE.
 	file, err := os.ReadFile("package.json")
 
 	if err != nil {
-		return "", false, nil
+		return nodeVersion, npmDeps, false
 	}
 
 	// PARSE JSON CONTENT FROM package.json.
 	var data map[string]interface{}
 
 	if err := json.Unmarshal(file, &data); err != nil {
-		return "", false, nil
+		return nodeVersion, npmDeps, false
 	}
 
 	// EXTRACT REQUIRED NODE VERSION FROM "engines" SECTION.
-	var requiredNodeVersion string
-
 	if engines, ok := data["engines"].(map[string]interface{}); ok {
 		if node, exists := engines["node"].(string); exists {
-			requiredNodeVersion = strings.TrimSpace(node)
+			nodeVersion = strings.TrimSpace(node)
 		}
 	}
 
-	// EXTRACT DEPENDENCIES AND DEV DEPENDENCIES.
-	var requiredDeps []string
+	// CALCULATE THE TOTAL CAPACITY NEEDED FOR DEPENDENCIES TO MINIMIZE ALLOCATIONS.
+	totalDeps := 0
 
+	if deps, ok := data["dependencies"].(map[string]interface{}); ok {
+		totalDeps += len(deps)
+	}
+
+	if devDeps, ok := data["devDependencies"].(map[string]interface{}); ok {
+		totalDeps += len(devDeps)
+	}
+
+	// RE-ALLOCATE WITH EXACT CAPACITY IF WE KNOW THE SIZE.
+	if totalDeps > 0 && totalDeps > cap(npmDeps) {
+		npmDeps = make([]string, 0, totalDeps)
+	}
+
+	// EXTRACT DEPENDENCIES.
 	if dependencies, ok := data["dependencies"].(map[string]interface{}); ok {
 		for dep := range dependencies {
-			requiredDeps = append(requiredDeps, dep)
+			npmDeps = append(npmDeps, dep)
 		}
 	}
 
+	// EXTRACT DEV DEPENDENCIES.
 	if devDependencies, ok := data["devDependencies"].(map[string]interface{}); ok {
 		for dep := range devDependencies {
-			requiredDeps = append(requiredDeps, dep)
+			npmDeps = append(npmDeps, dep)
 		}
 	}
 
-	return requiredNodeVersion, true, requiredDeps
+	return nodeVersion, npmDeps, true
 }

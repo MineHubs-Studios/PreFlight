@@ -10,8 +10,10 @@ import (
 // ReadComposerJSON READ composer.json, PARSE REQUIRED PHP VERSION, EXTENSIONS, AND DEPENDENCIES.
 func ReadComposerJSON() (string, []string, []string, bool) {
 	var phpVersion string
-	var phpExtensions []string
-	var composerDeps []string
+
+	// PRE-ALLOCATES SLICES WITH SMALL CAPACITY TO AVOID REALLOCATIONS IN COMMON CASES.
+	phpExtensions := make([]string, 0, 5)
+	composerDeps := make([]string, 0, 10)
 
 	// CHECK IF composer.json EXISTS.
 	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {
@@ -32,7 +34,42 @@ func ReadComposerJSON() (string, []string, []string, bool) {
 		return "", phpExtensions, composerDeps, false
 	}
 
-	// EXTRACT "require" AND "require-dev" SECTIONS.
+	// CALCULATE THE TOTAL CAPACITY NEEDED FOR DEPENDENCIES TO MINIMIZE ALLOCATIONS.
+	totalDeps := 0
+
+	if require, ok := data["require"].(map[string]interface{}); ok {
+		for dep := range require {
+			if dep != "php" && !strings.HasPrefix(dep, "ext-") {
+				totalDeps++
+			}
+		}
+	}
+
+	if requireDev, ok := data["require-dev"].(map[string]interface{}); ok {
+		totalDeps += len(requireDev)
+	}
+
+	// RE-ALLOCATE WITH EXACT CAPACITY IF WE KNOW THE SIZE.
+	if totalDeps > 0 {
+		composerDeps = make([]string, 0, totalDeps)
+	}
+
+	// CALCULATE EXTENSION CAPACITY AND PRE-ALLOCATE IF POSSIBLE.
+	extCount := 0
+
+	if require, ok := data["require"].(map[string]interface{}); ok {
+		for dep := range require {
+			if strings.HasPrefix(dep, "ext-") {
+				extCount++
+			}
+		}
+
+		if extCount > 0 {
+			phpExtensions = make([]string, 0, extCount)
+		}
+	}
+
+	// EXTRACT DEPENDENCIES.
 	if require, ok := data["require"].(map[string]interface{}); ok {
 		for dep, version := range require {
 			if dep == "php" {
@@ -45,6 +82,7 @@ func ReadComposerJSON() (string, []string, []string, bool) {
 		}
 	}
 
+	// EXTRACT DEV DEPENDENCIES.
 	if requireDev, ok := data["require-dev"].(map[string]interface{}); ok {
 		for dep := range requireDev {
 			composerDeps = append(composerDeps, dep)

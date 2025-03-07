@@ -2,27 +2,56 @@ package cmd
 
 import (
 	"PreFlight/core"
-	"fmt"
+	"PreFlight/utils"
 	"github.com/spf13/cobra"
+	"runtime"
 )
 
 var (
-	version   = "0.1.0"
-	buildDate = "28-02-2025"
+	// Version SPECIFY THE CURRENT VERSION OF PreFlight.
+	Version = "2.0.0-beta2"
 )
 
-// versionCmd REPRESENTS THE VERSION COMMAND.
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "A brief description of your command",
+	Short: "Shows PreFlight version information",
+	Long:  `Shows detailed information about the PreFlight version including version number and build date.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println()
-		fmt.Println(core.Bold + core.Yellow + "PreFlight - Version Information" + core.Reset + core.Bold)
-		fmt.Println("-----------------------------")
-		fmt.Printf("Version:    %s\n", version)
-		fmt.Printf("Build dato: %s\n", buildDate)
-		fmt.Println("-----------------------------" + core.Reset)
-		fmt.Println()
+		ow := utils.NewOutputWriter()
+
+		// GET VERSION DATA.
+		versionData, done := core.GetVersionInfo(
+			Version,
+			runtime.Version(),
+			runtime.GOOS+"/"+runtime.GOARCH,
+		)
+
+		ow.PrintNewLines(1)
+		ow.Println(core.Bold + core.Yellow + "PreFlight - Version Information" + core.Reset + core.Bold)
+		ow.Println(core.Border)
+
+		// WAIT FOR THE ASYNC OPERATION TO COMPLETE.
+		<-done
+
+		if versionData.Version == "development" {
+			ow.Printf("Version:         %s\n", versionData.Version)
+			if versionData.Error == nil {
+				ow.Printf("Latest version:  %s (GitHub)\n", versionData.LatestVersion)
+			} else {
+				ow.Printf("Latest version:  Unable to check\n")
+			}
+		} else {
+			ow.Printf("Version:         %s\n", versionData.Version)
+
+			if versionData.HasUpdate {
+				ow.Printf("Latest version:  %s\n", versionData.LatestVersion)
+			}
+		}
+
+		// ALWAYS SHOW Go VERSION AND PLATFORM.
+		ow.Printf("Go version:      %s\n", versionData.GoVersion)
+		ow.Printf("Platform:        %s\n", versionData.Platform)
+		ow.Println(core.Border + core.Reset)
 	},
 }
 

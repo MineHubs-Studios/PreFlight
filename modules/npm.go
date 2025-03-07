@@ -2,11 +2,11 @@ package modules
 
 import (
 	"PreFlight/utils"
-	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -16,38 +16,49 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
-// CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
-func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
-	select {
-	case <-ctx.Done():
-		return nil, nil, nil
-	default:
+type PackageManager struct {
+	Command  string // Command TO RUN (npm, pnpm, yarn)
+	LockFile string // ASSOCIATED LOCK FILE.
+}
+
+func DeterminePackageManager() PackageManager {
+	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
+		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
 	}
 
-	// CHECK IF NODE IS INSTALLED.
-	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
+	if _, err := os.Stat("yarn.lock"); err == nil {
+		return PackageManager{Command: "yarn", LockFile: "yarn.lock"}
+	}
 
-	// READ package.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
-	requiredNodeVersion, found, requiredDeps := utils.ReadPackageJSON()
+	if _, err := os.Stat("package-lock.json"); err == nil {
+		return PackageManager{Command: "npm", LockFile: "package-lock.json"}
+	}
+
+	// DEFAULT TO NPM WITH NO LOCK FILE.
+	return PackageManager{Command: "npm", LockFile: ""}
+}
+
+// CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
+func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+	// CHECK IF CONTEXT IS CANCELED.
+	if ctx.Err() != nil {
+		return nil, nil, nil
+	}
+
+	// READ package.json TO EXTRACT DEPENDENCIES.
+	_, requiredDeps, found := utils.ReadPackageJSON()
+
+	// DETERMINE WHICH PACKAGE MANAGER TO USE.
+	pm := DeterminePackageManager()
 
 	// HANDLE MISSING package.json.
 	if !found {
 		errors = append(errors, "package.json not found.")
 
-		lockFiles := []string{"package-lock.json", "pnpm-lock.yaml"}
-		lockFound := false
-
-		for _, file := range lockFiles {
-			if _, err := os.Stat(file); err == nil {
-				lockFound = true
-				break
-			}
-		}
-
-		if lockFound {
-			warnings = append(warnings, "package.json not found, but a lock file exists. Ensure package.json is included in your project.")
+		if pm.LockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files are found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.")
 		}
 
 		return errors, warnings, successes
@@ -55,57 +66,100 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	successes = append(successes, "package.json found.")
 
-	// VALIDATE NODE VERSION IF SPECIFIC VERSION IS REQUIRED.
-	if requiredNodeVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, requiredNodeVersion); isValid {
-			successes = append(successes, feedback)
-		} else {
-			errors = append(errors, feedback)
-		}
-	} else {
-		successes = append(successes, "No specific Node.js version is required.")
+	// GET ALL INSTALLED PACKAGES.
+	installedPackages, err := getInstalledPackages()
+
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
 	}
 
-	// CHECK ALL NPM PACKAGES DEFINED IN package.json.
+	// CHECK REQUIRED PACKAGES.
 	for _, dep := range requiredDeps {
-		if !checkNpmPackage(ctx, dep) {
-			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `npm install %s`.", dep, dep))
-		} else {
+		if isInstalled, exists := installedPackages[dep]; exists && isInstalled {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
+		} else {
+			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm.Command, dep))
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// VALIDATE NODE INSTALLATION AND OBTAIN INSTALLED NODE VERSION.
-func isNodeInstalled(ctx context.Context, errors *[]string, successes *[]string) string {
-	cmd := exec.CommandContext(ctx, "node", "--version")
-	var outBuffer bytes.Buffer
-	cmd.Stdout = &outBuffer
+// getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
+func getInstalledPackages() (map[string]bool, error) {
+	installedPackages := make(map[string]bool)
+	packageJSON, err := os.ReadFile("package.json")
 
-	err := cmd.Run()
+	if err == nil {
+		var pkgData map[string]interface{}
 
-	if err != nil {
-		*errors = append(*errors, "Node.js is not installed. Please install Node.js to use NPM.")
-		return ""
+		if err = json.Unmarshal(packageJSON, &pkgData); err == nil {
+			// GET ALL DEPENDENCIES AND DEV DEPENDENCIES.
+			allDeps := make(map[string]interface{})
+
+			if deps, ok := pkgData["dependencies"].(map[string]interface{}); ok {
+				for name, version := range deps {
+					allDeps[name] = version
+				}
+			}
+
+			if devDeps, ok := pkgData["devDependencies"].(map[string]interface{}); ok {
+				for name, version := range devDeps {
+					allDeps[name] = version
+				}
+			}
+
+			// CHECK EACH DEPENDENCY IN NODE_MODULES.
+			for name := range allDeps {
+				var path string
+
+				if strings.HasPrefix(name, "@") {
+					// HANDLE SCOPED PACKAGES.
+					parts := strings.SplitN(name, "/", 2)
+
+					if len(parts) == 2 {
+						path = filepath.Join("node_modules", parts[0], parts[1])
+					}
+				} else {
+					path = filepath.Join("node_modules", name)
+				}
+
+				if path != "" {
+					if _, err := os.Stat(path); err == nil {
+						installedPackages[name] = true
+					}
+				}
+			}
+		}
 	}
 
-	installedVersion := strings.TrimSpace(outBuffer.String())
-	*successes = append(*successes, fmt.Sprintf("Node.js is installed with version %s.", installedVersion))
+	// IF WE COULDN'T READ package.json, TRY TO SCAN NODE_MODULES DIRECTLY
+	if len(installedPackages) == 0 {
+		entries, err := os.ReadDir("node_modules")
 
-	return installedVersion
-}
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					name := entry.Name()
 
-// CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
-func checkNpmPackage(ctx context.Context, packageName string) bool {
-	cmd := exec.CommandContext(ctx, "npm", "list", packageName, "--depth=0")
-	var outBuffer, errBuffer bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &outBuffer, &errBuffer
+					// HANDLE @scope DIRECTORIES
+					if strings.HasPrefix(name, "@") {
+						scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
 
-	if err := cmd.Run(); err != nil || strings.Contains(errBuffer.String(), "missing") || strings.TrimSpace(outBuffer.String()) == "" {
-		return false
+						if err == nil {
+							for _, scopedEntry := range scopedEntries {
+								if scopedEntry.IsDir() {
+									installedPackages[name+"/"+scopedEntry.Name()] = true
+								}
+							}
+						}
+					} else {
+						installedPackages[name] = true
+					}
+				}
+			}
+		}
 	}
 
-	return true
+	return installedPackages, nil
 }

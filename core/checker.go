@@ -1,9 +1,9 @@
 package core
 
 import (
+	"PreFlight/utils"
 	"context"
 	"fmt"
-	"os"
 	"strings"
 	"time"
 )
@@ -15,11 +15,17 @@ type CheckResult struct {
 	Successes []string
 }
 
+const (
+	progressIncrement = 25
+	progressSleep     = 200 * time.Millisecond
+)
+
 func showProgress(percent int) {
 	fullBlocks := percent / 5
 	emptyBlocks := 20 - fullBlocks
 
 	var sb strings.Builder
+	sb.Grow(50)
 
 	sb.WriteString("\r    [")
 	sb.WriteString(strings.Repeat(BlockFull, fullBlocks))
@@ -33,30 +39,44 @@ func showProgress(percent int) {
 	fmt.Print(sb.String())
 }
 
-func RunChecks(ctx context.Context) {
-	var categorizedResults []CheckResult
+func RunChecks(ctx context.Context) int {
+	modules := SortModules(GetModules())
+	categorizedResults := make([]CheckResult, 0, len(modules))
+	ow := utils.NewOutputWriter()
 
-	fmt.Println(Bold + "🚀 Running system setup checks...")
+	if !ow.Println(Bold + "🚀 Running system setup checks...") {
+		return 0
+	}
 
-	for _, module := range GetModules() {
+	for _, module := range modules {
 		// CHECK FOR CANCELLATION.
 		select {
 		case <-ctx.Done():
-			fmt.Println("\nChecks cancelled...")
-			return
+			if !ow.Println("\nChecks cancelled...") {
+				return 0
+			}
+
+			return 1
 		default:
 		}
 
 		moduleStart := time.Now()
-		fmt.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name())
 
-		for progress := 0; progress <= 100; progress += 25 {
+		if !ow.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name()) {
+			return 0
+		}
+
+		for progress := 0; progress <= 100; progress += progressIncrement {
 			select {
 			case <-ctx.Done():
-				return
+				if !ow.Flush() {
+					return 0
+				}
+
+				return 1
 			default:
 				showProgress(progress)
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(progressSleep)
 			}
 		}
 
@@ -76,42 +96,76 @@ func RunChecks(ctx context.Context) {
 		categorizedResults = append(categorizedResults, result)
 
 		moduleDuration := time.Since(moduleStart)
-		fmt.Printf("\n      %s⏱ Completed in: %dms%s\n", Yellow, moduleDuration.Milliseconds(), Reset)
+
+		if !ow.Printf("\n      %s⏱ Completed in: %dms%s\n", Yellow, moduleDuration.Milliseconds(), Reset) {
+			return 0
+		}
 	}
 
-	fmt.Println()
-	fmt.Println()
+	if !ow.PrintNewLines(2) {
+		return 0
+	}
 
 	printResults(categorizedResults)
-	finalMessage(categorizedResults)
+	return finalMessage(categorizedResults)
 }
 
 func printResults(results []CheckResult) {
+	ow := utils.NewOutputWriter()
+
 	for _, result := range results {
-		fmt.Println(Reset + Bold + "\nScope: " + result.Scope + Reset)
+		var sb strings.Builder
+
+		sb.WriteString(Reset)
+		sb.WriteString(Bold)
+		sb.WriteString("\nScope: ")
+		sb.WriteString(result.Scope)
+		sb.WriteString(Reset)
+
+		if !ow.Println(sb.String()) {
+			return
+		}
 
 		if len(result.Successes) > 0 {
-			fmt.Println(Green + "  Successes:" + Reset)
-			printMessages(result.Successes, Green, CheckMark)
-			fmt.Println()
+			if !ow.Println(Green + "  Successes:" + Reset) {
+				return
+			}
+
+			printMessages(ow, result.Successes, Green, CheckMark)
+
+			if !ow.Println("") {
+				return
+			}
 		}
 
 		if len(result.Warnings) > 0 {
-			fmt.Println(Yellow + "  Warnings:" + Reset)
-			printMessages(result.Warnings, Yellow, WarningSign)
-			fmt.Println()
+			if !ow.Println(Yellow + "  Warnings:" + Reset) {
+				return
+			}
+
+			printMessages(ow, result.Warnings, Yellow, WarningSign)
+
+			if !ow.Println("") {
+				return
+			}
 		}
 
 		if len(result.Errors) > 0 {
-			fmt.Println(Red + "  Errors:" + Reset)
-			printMessages(result.Errors, Red, CrossMark)
-			fmt.Println()
+			if !ow.Println(Red + "  Errors:" + Reset) {
+				return
+			}
+
+			printMessages(ow, result.Errors, Red, CrossMark)
+
+			if !ow.Println("") {
+				return
+			}
 		}
 	}
 }
 
 // printMessages
-func printMessages(messages []string, color string, symbol string) {
+func printMessages(ow *utils.OutputWriter, messages []string, color string, symbol string) {
 	var isUnderVersionMatch bool
 
 	for _, msg := range messages {
@@ -122,7 +176,7 @@ func printMessages(messages []string, color string, symbol string) {
 			(strings.Contains(msgLower, "installed") &&
 				(strings.Contains(msgLower, "php") ||
 					strings.Contains(msgLower, "composer") ||
-					strings.Contains(msgLower, "node.js"))) {
+					strings.Contains(msgLower, "node"))) {
 			isUnderVersionMatch = true
 			indentLevel = 4
 		} else if strings.Contains(msg, "Scope:") {
@@ -145,11 +199,11 @@ func printMessages(messages []string, color string, symbol string) {
 			indentLevel = 4
 		}
 
-		fmt.Printf("%s%s %s %s\n", color, strings.Repeat(" ", indentLevel), symbol, msg)
+		ow.Printf("%s%s %s %s\n", color, strings.Repeat(" ", indentLevel), symbol, msg)
 	}
 }
 
-func finalMessage(results []CheckResult) {
+func finalMessage(results []CheckResult) int {
 	var totalErrors, totalWarnings int
 
 	for _, result := range results {
@@ -174,5 +228,5 @@ func finalMessage(results []CheckResult) {
 	currentTime := time.Now().Format("02-01-2006 15:04:05")
 
 	fmt.Printf("\n%s (Completed at: %s)\n", finalMessage, currentTime)
-	os.Exit(exitCode)
+	return exitCode
 }
