@@ -45,11 +45,6 @@ var checkCmd = &cobra.Command{
 			}
 		}
 
-		if len(moduleNames) == 0 {
-			// IF NO SPECIFIC MODULES REQUESTED, USE ALL AVAILABLE ONES.
-			fmt.Println(core.Red + "No specific package managers requested, checking all available ones.")
-		}
-
 		// REGISTER REQUESTED MODULES.
 		if err := core.RegisterModule(nil, moduleNames...); err != nil {
 			fmt.Printf(core.Red+"Failed to register modules: %v\n", err)

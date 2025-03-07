@@ -7,33 +7,50 @@ import (
 	"strings"
 )
 
+// COMMAND-LINE FLAGS.
 var (
 	packageManagersList string
 )
 
+// listCmd REPRESENTS THE LIST COMMAND THAT DISPLAYS DEPENDENCIES.
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all required dependencies for this project\n",
+	Short: "List all required dependencies for this project",
+	Long: `Lists all dependencies required by this project based on package manager configuration files.
+Multiple package managers can be specified except that npm and pnpm cannot be used simultaneously.`,
+	Example: "preflight list --pm composer,npm",
 	Run: func(cmd *cobra.Command, args []string) {
-		var pms []string
+		var packageManagers []string
 
 		if packageManagersList != "" {
-			pms = strings.Split(packageManagersList, ",")
+			// PROCESS AND VALIDATE PACKAGE MANAGER NAMES.
 			hasNodePM := false
 
-			for _, pm := range pms {
+			for _, pm := range strings.Split(packageManagersList, ",") {
+				pm = strings.TrimSpace(strings.ToLower(pm))
+
+				if pm == "" {
+					continue
+				}
+
+				// CHECK FOR NPM AND PNPM CONFLICT.
 				if pm == "npm" || pm == "pnpm" {
 					if hasNodePM {
-						fmt.Println(core.Red + "Error: You can't use npm and pnpm at the same time.")
+						fmt.Printf(core.Red+"%sError: You can't use npm and pnpm at the same time.%s\n",
+							core.Red, core.Reset)
 						return
 					}
 
 					hasNodePM = true
 				}
+
+				packageManagers = append(packageManagers, pm)
 			}
 		}
 
-		dependencies := core.GetAllDependencies(pms)
+		// GET AND PRINT DEPENDENCIES.
+		dependencies := core.GetAllDependencies(packageManagers)
+
 		core.PrintDependencies(dependencies)
 	},
 }
