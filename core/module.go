@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 )
@@ -22,6 +23,17 @@ var (
 
 	// availableModules CONTAINS ALL KNOWN MODULES THAT ARE REGISTERED.
 	availableModules = make(map[string]Module)
+)
+
+// SortType DEFINES THE SORTING METHOD TO BE APPLIED TO MODULES.
+type SortType string
+
+const (
+	// SortByPriority SORTS MODULES BASED ON A PREDEFINED PRIORITY ORDER.
+	SortByPriority SortType = "priority"
+
+	// SortByName SORTS MODULES ALPHABETICALLY BY NAME.
+	SortByName SortType = "name"
 )
 
 // RegisterModule REGISTERS A NEW MODULE IF IT DOESN'T ALREADY EXIST.
@@ -114,6 +126,61 @@ func RegisterAvailableModule(name string, module Module) {
 	defer modulesMutex.Unlock()
 
 	availableModules[normalizedName] = module
+}
+
+// SortModules SORTS MODULES BASED ON THE SPECIFIED SORT TYPE.
+func SortModules(modules []Module, sortType ...SortType) []Module {
+	// DEFAULT PRIORITY MAP FOR MODULES.
+	priority := map[string]int{
+		"php":      1,
+		"composer": 2,
+		"node":     3,
+		"npm":      4,
+		"yarn":     5,
+		"pnpm":     6,
+	}
+
+	// COPY MODULES ARRAY TO AVOID MODIFYING THE ORIGINAL.
+	sortedModules := make([]Module, len(modules))
+	copy(sortedModules, modules)
+
+	// DETERMINE THE SORTING TYPE.
+	actualSortType := SortByPriority
+
+	if len(sortType) > 0 {
+		actualSortType = sortType[0]
+	}
+
+	// SORT BY THE CHOSEN TYPE.
+	switch actualSortType {
+	case SortByName:
+		// SIMPLE ALPHABETICAL SORT BY NAME.
+		sort.SliceStable(sortedModules, func(i, j int) bool {
+			return strings.ToLower(sortedModules[i].Name()) < strings.ToLower(sortedModules[j].Name())
+		})
+	default: // SortByPriority
+		// SORT BY PRIORITY.
+		sort.SliceStable(sortedModules, func(i, j int) bool {
+			nameI := strings.ToLower(sortedModules[i].Name())
+			nameJ := strings.ToLower(sortedModules[j].Name())
+
+			priI := priority[nameI]
+
+			if priI == 0 {
+				priI = 1000
+			}
+
+			priJ := priority[nameJ]
+
+			if priJ == 0 {
+				priJ = 1000
+			}
+
+			return priI < priJ
+		})
+	}
+
+	return sortedModules
 }
 
 // Reset CLEARS ALL REGISTERED MODULES.

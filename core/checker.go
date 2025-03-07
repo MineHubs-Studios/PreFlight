@@ -40,7 +40,7 @@ func showProgress(percent int) {
 }
 
 func RunChecks(ctx context.Context) int {
-	modules := GetModules()
+	modules := SortModules(GetModules())
 	categorizedResults := make([]CheckResult, 0, len(modules))
 	ow := utils.NewOutputWriter()
 
