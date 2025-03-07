@@ -3,9 +3,10 @@ package modules
 import (
 	"PreFlight/utils"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -86,36 +87,77 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 // getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
 func getInstalledPackages(ctx context.Context, pmCommand string) (map[string]bool, error) {
-	cmd := exec.CommandContext(ctx, pmCommand, "list", "--depth=0", "--json")
-	output, err := cmd.Output()
-
 	installedPackages := make(map[string]bool)
+	packageJSON, err := os.ReadFile("package.json")
 
-	if err != nil {
-		if len(output) == 0 {
-			return installedPackages, fmt.Errorf("failed to list installed packages: %w", err)
+	if err == nil {
+		var pkgData map[string]interface{}
+
+		if err = json.Unmarshal(packageJSON, &pkgData); err == nil {
+			// GET ALL DEPENDENCIES AND DEV DEPENDENCIES.
+			allDeps := make(map[string]interface{})
+
+			if deps, ok := pkgData["dependencies"].(map[string]interface{}); ok {
+				for name, version := range deps {
+					allDeps[name] = version
+				}
+			}
+
+			if devDeps, ok := pkgData["devDependencies"].(map[string]interface{}); ok {
+				for name, version := range devDeps {
+					allDeps[name] = version
+				}
+			}
+
+			// CHECK EACH DEPENDENCY IN NODE_MODULES.
+			for name := range allDeps {
+				var path string
+
+				if strings.HasPrefix(name, "@") {
+					// HANDLE SCOPED PACKAGES.
+					parts := strings.SplitN(name, "/", 2)
+
+					if len(parts) == 2 {
+						path = filepath.Join("node_modules", parts[0], parts[1])
+					}
+				} else {
+					path = filepath.Join("node_modules", name)
+				}
+
+				if path != "" {
+					if _, err := os.Stat(path); err == nil {
+						installedPackages[name] = true
+					}
+				}
+			}
 		}
 	}
 
-	lines := strings.Split(string(output), "\n")
+	// IF WE COULDN'T READ package.json, TRY TO SCAN NODE_MODULES DIRECTLY
+	if len(installedPackages) == 0 {
+		entries, err := os.ReadDir("node_modules")
 
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
+		if err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					name := entry.Name()
 
-		if line == "" || !strings.Contains(line, "node_modules/") {
-			continue
-		}
+					// HANDLE @scope DIRECTORIES
+					if strings.HasPrefix(name, "@") {
+						scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
 
-		parts := strings.Split(line, "node_modules/")
-
-		if len(parts) > 1 {
-			packageName := strings.TrimSpace(parts[1])
-
-			if strings.Contains(packageName, "/") && !strings.HasPrefix(packageName, "@") {
-				packageName = strings.Split(packageName, "/")[0]
+						if err == nil {
+							for _, scopedEntry := range scopedEntries {
+								if scopedEntry.IsDir() {
+									installedPackages[name+"/"+scopedEntry.Name()] = true
+								}
+							}
+						}
+					} else {
+						installedPackages[name] = true
+					}
+				}
 			}
-
-			installedPackages[packageName] = true
 		}
 	}
 
