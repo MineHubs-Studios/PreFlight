@@ -20,7 +20,7 @@ type PackageManager struct {
 	LockFile string // ASSOCIATED LOCK FILE.
 }
 
-func determinePackageManager() PackageManager {
+func DeterminePackageManager() PackageManager {
 	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
 		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
 	}
@@ -48,7 +48,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	_, requiredDeps, found := utils.ReadPackageJSON()
 
 	// DETERMINE WHICH PACKAGE MANAGER TO USE.
-	pm := determinePackageManager()
+	pm := DeterminePackageManager()
 
 	// HANDLE MISSING package.json.
 	if !found {
