@@ -67,7 +67,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 	successes = append(successes, "package.json found.")
 
 	// GET ALL INSTALLED PACKAGES.
-	installedPackages, err := getInstalledPackages(ctx, pm.Command)
+	installedPackages, err := getInstalledPackages()
 
 	if err != nil {
 		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
@@ -86,7 +86,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 }
 
 // getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
-func getInstalledPackages(ctx context.Context, pmCommand string) (map[string]bool, error) {
+func getInstalledPackages() (map[string]bool, error) {
 	installedPackages := make(map[string]bool)
 	packageJSON, err := os.ReadFile("package.json")
 
