@@ -2,7 +2,6 @@ package modules
 
 import (
 	"PreFlight/utils"
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
@@ -16,20 +15,26 @@ func (n NodeModule) Name() string {
 }
 
 func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
-	select {
-	case <-ctx.Done():
+	// CHECK IF CONTEXT IS CANCELED.
+	if ctx.Err() != nil {
 		return nil, nil, nil
-	default:
 	}
 
-	// CHECK IF NODE IS INSTALLED.
-	nodeVersionOutput := isNodeInstalled(ctx, &errors, &successes)
+	// CHECK IF Node.js IS INSTALLED AND GET THE VERSION.
+	nodeVersion, err := getNodeVersion(ctx)
 
-	// VALIDATE NODE VERSION IF SPECIFIC VERSION IS REQUIRED.
-	nodeVersion, _, found := utils.ReadPackageJSON()
+	if err != nil {
+		errors = append(errors, "Node.js is not installed. Please install Node.js to use NPM.")
+		return errors, warnings, successes
+	}
 
-	if found && nodeVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersionOutput, nodeVersion); isValid {
+	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
+
+	// CHECK IF A SPECIFIC Node.js VERSION IS REQUIRED.
+	requiredVersion, _, found := utils.ReadPackageJSON()
+
+	if found && requiredVersion != "" {
+		if isValid, feedback := utils.ValidateVersion(nodeVersion, requiredVersion); isValid {
 			successes = append(successes, feedback)
 		} else {
 			errors = append(errors, feedback)
@@ -39,21 +44,14 @@ func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]int
 	return errors, warnings, successes
 }
 
-// VALIDATE NODE INSTALLATION AND OBTAIN INSTALLED NODE VERSION.
-func isNodeInstalled(ctx context.Context, errors *[]string, successes *[]string) string {
+// getNodeVersion RETURNS THE INSTALLED Node.js VERSION OR AN ERROR.
+func getNodeVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "node", "--version")
-	var outBuffer bytes.Buffer
-	cmd.Stdout = &outBuffer
-
-	err := cmd.Run()
+	output, err := cmd.Output()
 
 	if err != nil {
-		*errors = append(*errors, "Node.js is not installed. Please install Node.js to use NPM.")
-		return ""
+		return "", fmt.Errorf("failed to run node --version: %w", err)
 	}
 
-	installedVersion := strings.TrimSpace(outBuffer.String())
-	*successes = append(*successes, fmt.Sprintf("Node.js is installed with version %s.", installedVersion))
-
-	return installedVersion
+	return strings.TrimSpace(string(output)), nil
 }
