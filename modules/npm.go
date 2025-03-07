@@ -2,7 +2,6 @@ package modules
 
 import (
 	"PreFlight/utils"
-	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -16,39 +15,49 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
-func determineNpmPackageManager() (command string, lockFile string) {
+type PackageManager struct {
+	Command  string // Command TO RUN (npm, pnpm, yarn)
+	LockFile string // ASSOCIATED LOCK FILE.
+}
+
+func determinePackageManager() PackageManager {
 	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
-		return "pnpm", "pnpm-lock.yaml"
+		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
+	}
+
+	if _, err := os.Stat("yarn.lock"); err == nil {
+		return PackageManager{Command: "yarn", LockFile: "yarn.lock"}
 	}
 
 	if _, err := os.Stat("package-lock.json"); err == nil {
-		return "npm", "package-lock.json"
+		return PackageManager{Command: "npm", LockFile: "package-lock.json"}
 	}
 
-	return "npm", ""
+	// DEFAULT TO NPM WITH NO LOCK FILE.
+	return PackageManager{Command: "npm", LockFile: ""}
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
 func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
-	select {
-	case <-ctx.Done():
+	// CHECK IF CONTEXT IS CANCELED.
+	if ctx.Err() != nil {
 		return nil, nil, nil
-	default:
 	}
 
 	// READ package.json TO EXTRACT DEPENDENCIES.
 	_, requiredDeps, found := utils.ReadPackageJSON()
 
-	pm, lockFile := determineNpmPackageManager()
+	// DETERMINE WHICH PACKAGE MANAGER TO USE.
+	pm := determinePackageManager()
 
 	// HANDLE MISSING package.json.
 	if !found {
 		errors = append(errors, "package.json not found.")
 
-		if lockFile != "" {
-			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", lockFile))
+		if pm.LockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, pnpm-lock.yaml) are found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.")
 		}
 
 		return errors, warnings, successes
@@ -56,30 +65,59 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	successes = append(successes, "package.json found.")
 
-	// CHECK ALL NPM PACKAGES DEFINED IN package.json.
-	for _, dep := range requiredDeps {
-		//pm := determineNpmPackageManager()
+	// GET ALL INSTALLED PACKAGES.
+	installedPackages, err := getInstalledPackages(ctx, pm.Command)
 
-		if !checkNpmPackage(ctx, pm, dep) {
-			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm, dep))
-		} else {
+	if err != nil {
+		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
+	}
+
+	// CHECK REQUIRED PACKAGES.
+	for _, dep := range requiredDeps {
+		if isInstalled, exists := installedPackages[dep]; exists && isInstalled {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
+		} else {
+			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm.Command, dep))
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// CHECK IF AN NPM PACKAGE IS INSTALLED BY RUNNING `npm list`.
-func checkNpmPackage(ctx context.Context, pm string, packageName string) bool {
-	cmd := exec.CommandContext(ctx, pm, "list", packageName, "--depth=0")
+// getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
+func getInstalledPackages(ctx context.Context, pmCommand string) (map[string]bool, error) {
+	cmd := exec.CommandContext(ctx, pmCommand, "list", "--depth=0", "--json")
+	output, err := cmd.Output()
 
-	var outBuffer, errBuffer bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &outBuffer, &errBuffer
+	installedPackages := make(map[string]bool)
 
-	if cmd.Run() == nil && !strings.Contains(errBuffer.String(), "missing") && strings.TrimSpace(outBuffer.String()) != "" {
-		return true
+	if err != nil {
+		if len(output) == 0 {
+			return installedPackages, fmt.Errorf("failed to list installed packages: %w", err)
+		}
 	}
 
-	return false
+	lines := strings.Split(string(output), "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if line == "" || !strings.Contains(line, "node_modules/") {
+			continue
+		}
+
+		parts := strings.Split(line, "node_modules/")
+
+		if len(parts) > 1 {
+			packageName := strings.TrimSpace(parts[1])
+
+			if strings.Contains(packageName, "/") && !strings.HasPrefix(packageName, "@") {
+				packageName = strings.Split(packageName, "/")[0]
+			}
+
+			installedPackages[packageName] = true
+		}
+	}
+
+	return installedPackages, nil
 }

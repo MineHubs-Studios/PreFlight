@@ -16,6 +16,7 @@ func (p PhpModule) Name() string {
 }
 
 func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
