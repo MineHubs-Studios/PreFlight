@@ -57,7 +57,7 @@ func (g GoModule) CheckRequirements(ctx context.Context, params map[string]inter
 	successes = append(successes, "go.mod found.")
 
 	// READ go.mod TO FIND REQUIREMENTS.
-	requiredModules, err := getRequiredGoModules()
+	requiredModules, err := GetRequiredGoModules()
 
 	if err != nil {
 		warnings = append(warnings, fmt.Sprintf("Could not parse dependencies: %v", err))
@@ -95,8 +95,8 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return versionOutput, nil
 }
 
-// getRequiredModules RETURNS A LIST OF REQUIRED GO MODULES.
-func getRequiredGoModules() ([]string, error) {
+// GetRequiredGoModules RETURNS A LIST OF REQUIRED GO MODULES.
+func GetRequiredGoModules() ([]string, error) {
 	// RUN 'go list -m all' TO GET A LIST OF ALL DEPENDENCIES.
 	cmd := exec.Command("go", "list", "-m", "all")
 	output, err := cmd.Output()
