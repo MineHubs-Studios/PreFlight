@@ -20,6 +20,7 @@ func (p PhpModule) IsApplicable(ctx context.Context) bool {
 		return false
 	}
 
+	// CHECK IF PHP IS INSTALLED.
 	_, err := getPhpVersion(ctx)
 
 	if err == nil {
@@ -35,18 +36,11 @@ func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]inte
 		return nil, nil, nil
 	}
 
-	// CHECK IF PHP IS INSTALLED.
 	phpVersion, err := getPhpVersion(ctx)
-
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
 
 	// READ PHP REQUIREMENTS FROM composer.json.
-	phpVersionRequirement, requiredExtensions, _, found := utils.ReadComposerJSON()
-
-	if !found {
-		warnings = append(warnings, "composer.json not found. PHP requirements cannot be dynamically determined.")
-		return errors, warnings, successes
-	}
+	phpVersionRequirement, requiredExtensions, _, _ := utils.ReadComposerJSON()
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
@@ -100,8 +94,6 @@ func getPhpVersion(ctx context.Context) (string, error) {
 	}
 
 	return matches[1], nil
-
-	// TODO - DO WE WANT TO GET THIS DATA FOR USERS? (built: Nov 20 2024 11:13:22) (NTS Visual C++ 2022 x64)
 }
 
 // getPhpExtensions RETURNS A MAP OF ALL INSTALLED PHP EXTENSIONS.

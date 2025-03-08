@@ -21,7 +21,7 @@ func (n NpmModule) IsApplicable(ctx context.Context) bool {
 		return false
 	}
 
-	// CHECK IF PACKAGE.JSON EXISTS.
+	// CHECK IF package.json EXISTS.
 	if _, err := os.Stat("package.json"); err == nil {
 		return true
 	}

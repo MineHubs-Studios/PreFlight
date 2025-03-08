@@ -20,14 +20,14 @@ func (c ComposerModule) IsApplicable(ctx context.Context) bool {
 		return false
 	}
 
-	// CHECK IF COMPOSER IS INSTALLED.
+	// CHECK IF Composer IS INSTALLED.
 	_, err := getComposerVersion(ctx)
 
 	if err == nil {
 		return true
 	}
 
-	// CHECK IF COMPOSER.JSON OR COMPOSER.LOCK EXISTS.
+	// CHECK IF composer.json OR composer.lock EXISTS.
 	if _, err := os.Stat("composer.json"); err == nil {
 		return true
 	}
@@ -45,9 +45,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string
 		return nil, nil, nil
 	}
 
-	// CHECK IF Composer.js IS INSTALLED AND GET THE VERSION.
 	composerVersion, _ := getComposerVersion(ctx)
-
 	successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
 
 	// READ composer.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.

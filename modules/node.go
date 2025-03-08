@@ -19,6 +19,7 @@ func (n NodeModule) IsApplicable(ctx context.Context) bool {
 		return false
 	}
 
+	// CHECK IF Node.js IS INSTALLED.
 	_, err := getNodeVersion(ctx)
 
 	if err == nil {
@@ -34,9 +35,7 @@ func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]int
 		return nil, nil, nil
 	}
 
-	// CHECK IF Node.js IS INSTALLED AND GET THE VERSION.
 	nodeVersion, _ := getNodeVersion(ctx)
-
 	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
 
 	// CHECK IF A SPECIFIC Node.js VERSION IS REQUIRED.
