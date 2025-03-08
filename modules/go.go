@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"PreFlight/utils"
 	"context"
 	"fmt"
 	"os"
@@ -35,26 +36,23 @@ func (g GoModule) CheckRequirements(ctx context.Context, params map[string]inter
 		return nil, nil, nil
 	}
 
-	// CHECK IF GO IS INSTALLED AND GET THE VERSION.
 	goVersion, err := getGoVersion(ctx)
-
 	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
 
+	requiredGoVersion := getGoVersionRequirement()
+
 	// CHECK IF go.mod EXISTS
-	_, err = os.Stat("go.mod")
+	if requiredGoVersion != "" {
+		isValid, feedback := utils.ValidateVersion(goVersion, requiredGoVersion)
 
-	if err != nil {
-		if os.IsNotExist(err) {
-			errors = append(errors, "go.mod not found. This may not be a Go module.")
-			warnings = append(warnings, "Run 'go mod init' to create a new Go module.")
-			return errors, warnings, successes
+		if isValid {
+			successes = append(successes, feedback)
+		} else {
+			errors = append(errors, feedback)
 		}
-
-		errors = append(errors, fmt.Sprintf("Could not access go.mod: %v", err))
-		return errors, warnings, successes
+	} else {
+		warnings = append(warnings, "Go version requirement not specified in go.mod.")
 	}
-
-	successes = append(successes, "go.mod found.")
 
 	// READ go.mod TO FIND REQUIREMENTS.
 	requiredModules, err := GetRequiredGoModules()
@@ -81,7 +79,7 @@ func getGoVersion(ctx context.Context) (string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", fmt.Errorf("failed to run go version: %w", err)
+		return "", fmt.Errorf("failed to run 'go version': %w, output: %s", err, string(output))
 	}
 
 	// EXTRACT VERSION FROM OUTPUT (FORMAT: "go version go1.18.3 darwin/amd64").
@@ -95,6 +93,38 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return versionOutput, nil
 }
 
+// getGoVersionRequirement RETURNS THE GO VERSION REQUIREMENT.
+func getGoVersionRequirement() string {
+	// CHECK IF go.mod EXISTS.
+	if _, err := os.Stat("go.mod"); err != nil {
+		return ""
+	}
+
+	// READ go.mod FILE.
+	content, err := os.ReadFile("go.mod")
+
+	if err != nil {
+		fmt.Println("Could not read go.mod file:", err)
+
+		return ""
+	}
+
+	fileContent := string(content)
+	lines := strings.Split(fileContent, "\n")
+
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+
+		if strings.HasPrefix(line, "go ") {
+			version := strings.TrimPrefix(line, "go ")
+
+			return version
+		}
+	}
+
+	return ""
+}
+
 // GetRequiredGoModules RETURNS A LIST OF REQUIRED GO MODULES.
 func GetRequiredGoModules() ([]string, error) {
 	// RUN 'go list -m all' TO GET A LIST OF ALL DEPENDENCIES.
@@ -102,7 +132,7 @@ func GetRequiredGoModules() ([]string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to run 'go list -m all': %w", err)
+		return nil, fmt.Errorf("failed to run 'go list -m all': %w, output: %s", err, string(output))
 	}
 
 	lines := strings.Split(string(output), "\n")
@@ -112,13 +142,15 @@ func GetRequiredGoModules() ([]string, error) {
 	for i := 1; i < len(lines); i++ {
 		line := strings.TrimSpace(lines[i])
 
-		if line != "" {
-			// EXTRACT MODULE NAME (BEFORE ANY VERSION NUMBERS).
-			parts := strings.Fields(line)
+		if line == "" {
+			continue
+		}
 
-			if len(parts) > 0 {
-				modules = append(modules, parts[0])
-			}
+		// EXTRACT MODULE NAME (BEFORE ANY VERSION NUMBERS).
+		parts := strings.Fields(line)
+
+		if len(parts) > 0 {
+			modules = append(modules, parts[0])
 		}
 	}
 
