@@ -60,6 +60,11 @@ func RunChecks(ctx context.Context) int {
 		default:
 		}
 
+		if !module.IsApplicable(ctx) {
+			// SKIP TO THE NEXT MODULE.
+			continue
+		}
+
 		moduleStart := time.Now()
 
 		if !ow.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name()) {
@@ -176,24 +181,28 @@ func printMessages(ow *utils.OutputWriter, messages []string, color string, symb
 			(strings.Contains(msgLower, "installed") &&
 				(strings.Contains(msgLower, "php") ||
 					strings.Contains(msgLower, "composer") ||
-					strings.Contains(msgLower, "node"))) {
+					strings.Contains(msgLower, "node") ||
+					strings.Contains(msgLower, "go"))) {
 			isUnderVersionMatch = true
 			indentLevel = 4
 		} else if strings.Contains(msg, "Scope:") {
 			isUnderVersionMatch = false
 			indentLevel = 2
-		} else if strings.Contains(msg, ".json found") {
+		} else if strings.Contains(msg, ".json found") ||
+			strings.Contains(msg, "go.mod found") {
 			isUnderVersionMatch = true
 			indentLevel = 4
 		} else if !strings.Contains(msgLower, "version") &&
 			!strings.Contains(msgLower, "installed") &&
-			!strings.Contains(msgLower, ".json") {
+			!strings.Contains(msgLower, ".json") &&
+			!strings.Contains(msgLower, "go.mod") {
 			isUnderVersionMatch = false
 		}
 
 		if isUnderVersionMatch && (strings.Contains(msgLower, "composer package") ||
 			strings.Contains(msgLower, "npm package") ||
-			strings.Contains(msgLower, "php extension")) {
+			strings.Contains(msgLower, "php extension") ||
+			strings.Contains(msgLower, "go module")) {
 			indentLevel = 6
 		} else if !strings.Contains(msg, "Scope:") {
 			indentLevel = 4

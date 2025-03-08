@@ -25,6 +25,7 @@ var checkCmd = &cobra.Command{
 			"composer": modules.ComposerModule{},
 			"node":     modules.NodeModule{},
 			"npm":      modules.NpmModule{},
+			"go":       modules.GoModule{},
 		}
 
 		for name, module := range availableModules {

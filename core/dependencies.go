@@ -98,6 +98,18 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 		}
 	}
 
+	// PROCESS GO MODULE DEPENDENCIES
+	if _, exists := pmSet["go"]; exists {
+		goDeps, err := modules.GetRequiredGoModules()
+
+		if err == nil && len(goDeps) > 0 {
+			sort.Strings(goDeps)
+			result.Dependencies["go"] = goDeps
+		} else {
+			result.Dependencies["go"] = []string{}
+		}
+	}
+
 	return result
 }
 
@@ -105,6 +117,7 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 func detectAvailablePackageManagers() []string {
 	availablePMs := make([]string, 0)
 
+	// CHECK FOR Composer (composer.json).
 	if _, err := os.Stat("composer.json"); !os.IsNotExist(err) {
 		availablePMs = append(availablePMs, "composer")
 	}
@@ -116,6 +129,11 @@ func detectAvailablePackageManagers() []string {
 		if pm.Command != "" {
 			availablePMs = append(availablePMs, pm.Command)
 		}
+	}
+
+	// CHECK FOR Go MODULES (go.mod)
+	if _, err := os.Stat("go.mod"); !os.IsNotExist(err) {
+		availablePMs = append(availablePMs, "go")
 	}
 
 	return availablePMs

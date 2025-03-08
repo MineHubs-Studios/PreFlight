@@ -15,20 +15,38 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
+func (c ComposerModule) IsApplicable(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	// CHECK IF Composer IS INSTALLED.
+	_, err := getComposerVersion(ctx)
+
+	if err == nil {
+		return true
+	}
+
+	// CHECK IF composer.json OR composer.lock EXISTS.
+	if _, err := os.Stat("composer.json"); err == nil {
+		return true
+	}
+
+	if _, err := os.Stat("composer.lock"); err == nil {
+		return true
+	}
+
+	return false
+}
+
 func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// CHECK IF Composer.js IS INSTALLED AND GET THE VERSION.
-	composerVersion, err := getComposerVersion(ctx)
-
-	if err != nil {
-		errors = append(errors, "Composer is not installed. Please install Composer.")
-	} else {
-		successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
-	}
+	composerVersion, _ := getComposerVersion(ctx)
+	successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
 
 	// READ composer.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
 	_, _, composerDeps, found := utils.ReadComposerJSON()

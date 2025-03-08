@@ -19,6 +19,7 @@ var listCmd = &cobra.Command{
 	Long: `Lists all dependencies required by this project based on package manager configuration files.
 Multiple package managers can be specified except that npm and pnpm cannot be used simultaneously.`,
 	Example: "preflight list --pm composer,npm",
+	Aliases: []string{"dependencies", "deps"},
 	Run: func(cmd *cobra.Command, args []string) {
 		var packageManagers []string
 

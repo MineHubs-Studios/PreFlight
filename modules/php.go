@@ -15,35 +15,40 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
+func (p PhpModule) IsApplicable(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	// CHECK IF PHP IS INSTALLED.
+	_, err := getPhpVersion(ctx)
+
+	if err == nil {
+		return true
+	}
+
+	return false
+}
+
 func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// CHECK IF PHP IS INSTALLED.
 	phpVersion, err := getPhpVersion(ctx)
-
-	if err != nil {
-		errors = append(errors, "PHP is not installed. Please install PHP.")
-		return errors, warnings, successes
-	}
-
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
 
 	// READ PHP REQUIREMENTS FROM composer.json.
-	phpVersionRequirement, requiredExtensions, _, found := utils.ReadComposerJSON()
-
-	if !found {
-		warnings = append(warnings, "composer.json not found. PHP requirements cannot be dynamically determined.")
-		return errors, warnings, successes
-	}
+	phpVersionRequirement, requiredExtensions, _, _ := utils.ReadComposerJSON()
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
-		if isValid, feedback := utils.ValidateVersion(phpVersion, phpVersionRequirement); isValid {
-			successes = append(successes, fmt.Sprintf("Installed PHP version matches the required version: %s.", phpVersionRequirement))
-		} else {
+		isValid, feedback := utils.ValidateVersion(phpVersion, phpVersionRequirement)
+
+		if isValid && feedback != "" {
+			successes = append(successes, feedback)
+		} else if !isValid {
 			errors = append(errors, feedback)
 		}
 	}
@@ -91,8 +96,6 @@ func getPhpVersion(ctx context.Context) (string, error) {
 	}
 
 	return matches[1], nil
-
-	// TODO - DO WE WANT TO GET THIS DATA FOR USERS? (built: Nov 20 2024 11:13:22) (NTS Visual C++ 2022 x64)
 }
 
 // getPhpExtensions RETURNS A MAP OF ALL INSTALLED PHP EXTENSIONS.
