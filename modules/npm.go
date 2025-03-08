@@ -16,6 +16,31 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
+func (n NpmModule) IsApplicable(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	// CHECK IF PACKAGE.JSON EXISTS.
+	if _, err := os.Stat("package.json"); err == nil {
+		return true
+	}
+
+	// DETERMINE PACKAGE MANAGER AND CHECK FOR LOCK FILE.
+	pm := DeterminePackageManager()
+
+	if pm.LockFile != "" {
+		return true
+	}
+
+	// CHECK IF NODE_MODULES EXISTS.
+	if _, err := os.Stat("node_modules"); err == nil {
+		return true
+	}
+
+	return false
+}
+
 type PackageManager struct {
 	Command  string // Command TO RUN (npm, pnpm, yarn)
 	LockFile string // ASSOCIATED LOCK FILE.

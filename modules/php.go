@@ -15,6 +15,20 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
+func (p PhpModule) IsApplicable(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	_, err := getPhpVersion(ctx)
+
+	if err == nil {
+		return true
+	}
+
+	return false
+}
+
 func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
@@ -23,11 +37,6 @@ func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]inte
 
 	// CHECK IF PHP IS INSTALLED.
 	phpVersion, err := getPhpVersion(ctx)
-
-	if err != nil {
-		errors = append(errors, "PHP is not installed. Please install PHP.")
-		return errors, warnings, successes
-	}
 
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
 

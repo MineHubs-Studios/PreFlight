@@ -11,6 +11,7 @@ import (
 // Module DEFINES THE CONTRACT FOR SYSTEM CHECK MODULES.
 type Module interface {
 	Name() string
+	IsApplicable(ctx context.Context) bool
 	CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string)
 }
 
