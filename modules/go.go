@@ -79,7 +79,7 @@ func getGoVersion(ctx context.Context) (string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", fmt.Errorf("failed to run 'go version': %w, output: %s", err, string(output))
+		return "", fmt.Errorf("failed to run 'go version': %w", err)
 	}
 
 	// EXTRACT VERSION FROM OUTPUT (FORMAT: "go version go1.18.3 darwin/amd64").
@@ -132,7 +132,7 @@ func GetRequiredGoModules() ([]string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to run 'go list -m all': %w, output: %s", err, string(output))
+		return nil, fmt.Errorf("failed to run 'go list -m all': %w", err)
 	}
 
 	lines := strings.Split(string(output), "\n")
