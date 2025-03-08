@@ -2,11 +2,11 @@
 
 A CLI tool to streamline project setup and ensure all dependencies are in check.
 
-:warning: **Disclaimer:** PreFlight is currently in beta development,
+> :warning: **Disclaimer:** PreFlight is currently in beta development,
 meaning that features, functionality, and stability are subject to change on a daily basis.
 The project is highly experimental, and users should expect frequent updates, modifications, and potential disruptions.
 
-We appreciate any feedback or bug reports to help improve the project.
+>We appreciate any feedback or bug reports to help improve the project.
 
 ## Overview
 
