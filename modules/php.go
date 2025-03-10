@@ -15,53 +15,57 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
-func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// CHECK IF PHP IS INSTALLED.
+	// CHECK PHP VERSION.
 	phpVersion, err := getPhpVersion(ctx)
 
+	// IF PHP IS NOT INSTALLED, THEN SKIP.
 	if err != nil {
-		errors = append(errors, "PHP is not installed. Please install PHP.")
-		return errors, warnings, successes
+		return nil, nil, nil
 	}
 
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
 
 	// READ PHP REQUIREMENTS FROM composer.json.
-	phpVersionRequirement, requiredExtensions, _, found := utils.ReadComposerJSON()
+	phpVersionRequirement, requiredExtensions, _, composerExists := utils.ReadComposerJSON()
 
-	if !found {
-		warnings = append(warnings, "composer.json not found. PHP requirements cannot be dynamically determined.")
+	// IF composer.json IS NOT FOUND, THEN SKIP.
+	if !composerExists {
 		return errors, warnings, successes
 	}
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
-		if isValid, feedback := utils.ValidateVersion(phpVersion, phpVersionRequirement); isValid {
-			successes = append(successes, fmt.Sprintf("Installed PHP version matches the required version: %s.", phpVersionRequirement))
-		} else {
+		isValid, feedback := utils.ValidateVersion(phpVersion, phpVersionRequirement)
+
+		if isValid && feedback != "" {
+			successes = append(successes, feedback)
+		} else if !isValid {
 			errors = append(errors, feedback)
 		}
 	}
 
-	// GET ALL INSTALLED PHP EXTENSIONS.
-	installedExtensions, err := getPhpExtensions(ctx)
+	if len(requiredExtensions) > 0 {
+		// GET ALL INSTALLED PHP EXTENSIONS.
+		installedExtensions, err := getPhpExtensions(ctx)
 
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to check PHP extensions: %v", err))
-		return errors, warnings, successes
-	}
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to check PHP extensions: %v", err))
+			return errors, warnings, successes
+		}
 
-	// CHECK REQUIRED PHP EXTENSIONS.
-	for _, ext := range requiredExtensions {
-		if _, exists := installedExtensions[ext]; !exists {
-			errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
-		} else {
-			successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+		// CHECK REQUIRED PHP EXTENSIONS.
+		for _, ext := range requiredExtensions {
+			if _, exists := installedExtensions[ext]; !exists {
+				errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
+			} else {
+				successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+			}
 		}
 	}
 
@@ -91,8 +95,6 @@ func getPhpVersion(ctx context.Context) (string, error) {
 	}
 
 	return matches[1], nil
-
-	// TODO - DO WE WANT TO GET THIS DATA FOR USERS? (built: Nov 20 2024 11:13:22) (NTS Visual C++ 2022 x64)
 }
 
 // getPhpExtensions RETURNS A MAP OF ALL INSTALLED PHP EXTENSIONS.

@@ -11,7 +11,7 @@ func ReadPackageJSON() (string, []string, bool) {
 	var nodeVersion string
 
 	// PRE-ALLOCATES SLICES WITH SMALL CAPACITY TO AVOID REALLOCATIONS IN COMMON CASES.
-	npmDeps := make([]string, 0, 10)
+	npmDeps := make([]string, 0, 15)
 
 	// CHECK IF package.json EXISTS.
 	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {

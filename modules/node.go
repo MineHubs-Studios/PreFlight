@@ -14,18 +14,17 @@ func (n NodeModule) Name() string {
 	return "Node"
 }
 
-func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// CHECK IF Node.js IS INSTALLED AND GET THE VERSION.
 	nodeVersion, err := getNodeVersion(ctx)
 
+	// IF node.js IS NOT INSTALLED, THEN SKIP.
 	if err != nil {
-		errors = append(errors, "Node.js is not installed. Please install Node.js to use NPM.")
-		return errors, warnings, successes
+		return nil, nil, nil
 	}
 
 	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))

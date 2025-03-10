@@ -39,10 +39,23 @@ func DeterminePackageManager() PackageManager {
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
-func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
+	}
+
+	// IF package.json, package.lock, yarn.lock, pnpm-lock.yaml OR node_modules IS NOT FOUND, THEN SKIP.
+	if _, errPkgJson := os.Stat("package.json"); os.IsNotExist(errPkgJson) {
+		if _, errPkgLock := os.Stat("package-lock.json"); os.IsNotExist(errPkgLock) {
+			if _, errYarn := os.Stat("yarn.lock"); os.IsNotExist(errYarn) {
+				if _, errPnpm := os.Stat("pnpm-lock.yaml"); os.IsNotExist(errPnpm) {
+					if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
+						return nil, nil, nil
+					}
+				}
+			}
+		}
 	}
 
 	// READ package.json TO EXTRACT DEPENDENCIES.
@@ -58,7 +71,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 		if pm.LockFile != "" {
 			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.") // SILENT THIS
 		}
 
 		return errors, warnings, successes

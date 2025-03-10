@@ -36,7 +36,7 @@ func ValidateVersion(installedVersion, requiredVersion string) (bool, string) {
 		return false, fmt.Sprintf("Version %s is required, but version %s is installed.", requiredVersion, installedVersion)
 	}
 
-	return true, fmt.Sprintf("Required version %s is installed.", requiredVersion)
+	return true, ""
 }
 
 // extractPHPVersion EXTRACTS THE VERSION NUMBER FROM A PHP VERSION STRING.
