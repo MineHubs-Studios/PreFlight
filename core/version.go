@@ -89,6 +89,7 @@ func GetVersionInfo(currentVersion, goVersion, platform string) (*VersionData, c
 	// FETCH LATEST VERSION.
 	go func() {
 		latestVersion, err := FetchLatestTag("MineHubs-Studios", "PreFlight")
+
 		if err != nil {
 			info.Error = err
 			info.LatestVersion = "Unable to check"

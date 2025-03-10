@@ -51,15 +51,15 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 	}
 
 	// READ go.mod TO FIND REQUIREMENTS.
-	requiredModules, err := GetRequiredGoModules()
+	goModules, err := GetGoModules()
 
 	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("Could not parse dependencies: %v", err)) // SILENT THIS AND ONLY CHECK DEPENDENCIES IF go.mod is found!
+		warnings = append(warnings, fmt.Sprintf("Could not parse modules: %v", err)) // SILENT THIS AND ONLY CHECK DEPENDENCIES IF go.mod is found!
 	}
 
-	// CHECK IF REQUIRED MODULES ARE INSTALLED.
-	for _, module := range requiredModules {
-		if isGoModuleInstalled(ctx, module) {
+	// CHECK IF go MODULES ARE INSTALLED.
+	for _, module := range goModules {
+		if getInstalledModules(ctx, module) {
 			successes = append(successes, fmt.Sprintf("Go module %s is installed.", module))
 		} else {
 			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", module, module))
@@ -116,8 +116,8 @@ func getGoVersionRequirement() string {
 	return ""
 }
 
-// GetRequiredGoModules RETURNS A LIST OF REQUIRED GO MODULES.
-func GetRequiredGoModules() ([]string, error) {
+// GetGoModules RETURNS A LIST OF REQUIRED GO MODULES.
+func GetGoModules() ([]string, error) {
 	// RUN 'go list -m all' TO GET A LIST OF ALL DEPENDENCIES.
 	cmd := exec.Command("go", "list", "-m", "all")
 	output, err := cmd.Output()
@@ -148,8 +148,8 @@ func GetRequiredGoModules() ([]string, error) {
 	return modules, nil
 }
 
-// isGoModuleInstalled CHECKS IF A SPECIFIC MODULE IS INSTALLED.
-func isGoModuleInstalled(ctx context.Context, moduleName string) bool {
+// getInstalledModules CHECKS IF A SPECIFIC MODULE IS INSTALLED.
+func getInstalledModules(ctx context.Context, moduleName string) bool {
 	if moduleName == "" {
 		return false
 	}

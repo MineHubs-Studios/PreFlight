@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"PreFlight/utils"
+	"PreFlight/config"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,21 +21,18 @@ type PackageManager struct {
 	LockFile string // ASSOCIATED LOCK FILE.
 }
 
-func DeterminePackageManager() PackageManager {
-	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
+// DeterminePackageManager IDENTIFIES WHICH PACKAGE MANAGER TO USE.
+func DeterminePackageManager(pkgConfig config.PackageConfig) PackageManager {
+	switch {
+	case pkgConfig.HasPnpmLock:
 		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
-	}
-
-	if _, err := os.Stat("yarn.lock"); err == nil {
+	case pkgConfig.HasYarnLock:
 		return PackageManager{Command: "yarn", LockFile: "yarn.lock"}
-	}
-
-	if _, err := os.Stat("package-lock.json"); err == nil {
+	case pkgConfig.HasPackageLock:
 		return PackageManager{Command: "npm", LockFile: "package-lock.json"}
+	default:
+		return PackageManager{Command: "npm", LockFile: ""}
 	}
-
-	// DEFAULT TO NPM WITH NO LOCK FILE.
-	return PackageManager{Command: "npm", LockFile: ""}
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
@@ -45,38 +42,36 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		return nil, nil, nil
 	}
 
-	// IF package.json, package.lock, yarn.lock, pnpm-lock.yaml OR node_modules IS NOT FOUND, THEN SKIP.
-	if _, errPkgJson := os.Stat("package.json"); os.IsNotExist(errPkgJson) {
-		if _, errPkgLock := os.Stat("package-lock.json"); os.IsNotExist(errPkgLock) {
-			if _, errYarn := os.Stat("yarn.lock"); os.IsNotExist(errYarn) {
-				if _, errPnpm := os.Stat("pnpm-lock.yaml"); os.IsNotExist(errPnpm) {
-					if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
-						return nil, nil, nil
-					}
-				}
-			}
+	packageConfig := config.LoadPackageConfig()
+
+	// IF package.json, LOCK FILES OR node_modules ARE NOT FOUND, THEN SKIP.
+	if !packageConfig.HasJSON && !packageConfig.HasPackageLock && !packageConfig.HasYarnLock && !packageConfig.HasPnpmLock {
+		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
+			return nil, nil, nil
 		}
 	}
 
-	// READ package.json TO EXTRACT DEPENDENCIES.
-	_, requiredDeps, found := utils.ReadPackageJSON()
+	pm := DeterminePackageManager(packageConfig)
 
-	// DETERMINE WHICH PACKAGE MANAGER TO USE.
-	pm := DeterminePackageManager()
+	// HANDLE ERRORS FROM LOADING CONFIG.
+	if packageConfig.Error != nil {
+		errors = append(errors, fmt.Sprintf("Failed to load package configuration: %v", packageConfig.Error))
+		return errors, warnings, successes
+	}
 
-	// HANDLE MISSING package.json.
-	if !found {
+	if !packageConfig.HasJSON {
 		errors = append(errors, "package.json not found.")
 
 		if pm.LockFile != "" {
 			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.") // SILENT THIS
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.")
 		}
 
 		return errors, warnings, successes
 	}
 
+	// SUCCESS THAT package.json IS FOUND:
 	successes = append(successes, "package.json found.")
 
 	// GET ALL INSTALLED PACKAGES.
@@ -86,9 +81,11 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
 	}
 
+	packageDeps := append(packageConfig.Dependencies, packageConfig.DevDependencies...)
+
 	// CHECK REQUIRED PACKAGES.
-	for _, dep := range requiredDeps {
-		if isInstalled, exists := installedPackages[dep]; exists && isInstalled {
+	for _, dep := range packageDeps {
+		if installedPackages[dep] {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
 		} else {
 			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm.Command, dep))
@@ -101,74 +98,67 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 // getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
 func getInstalledPackages() (map[string]bool, error) {
 	installedPackages := make(map[string]bool)
+
+	// LOAD DEPENDENCIES FROM package.json
 	packageJSON, err := os.ReadFile("package.json")
+	if err != nil {
+		return nil, err
+	}
 
-	if err == nil {
-		var pkgData map[string]interface{}
+	var packageData struct {
+		Dependencies    map[string]string `json:"dependencies"`
+		DevDependencies map[string]string `json:"devDependencies"`
+	}
 
-		if err = json.Unmarshal(packageJSON, &pkgData); err == nil {
-			// GET ALL DEPENDENCIES AND DEV DEPENDENCIES.
-			allDeps := make(map[string]interface{})
+	if err := json.Unmarshal(packageJSON, &packageData); err != nil {
+		return nil, err
+	}
 
-			if deps, ok := pkgData["dependencies"].(map[string]interface{}); ok {
-				for name, version := range deps {
-					allDeps[name] = version
-				}
-			}
+	// GET ALL DECLARED DEPENDENCIES.
+	packageDeps := make(map[string]struct{})
 
-			if devDeps, ok := pkgData["devDependencies"].(map[string]interface{}); ok {
-				for name, version := range devDeps {
-					allDeps[name] = version
-				}
-			}
+	for name := range packageData.Dependencies {
+		packageDeps[name] = struct{}{}
+	}
 
-			// CHECK EACH DEPENDENCY IN NODE_MODULES.
-			for name := range allDeps {
-				var path string
+	for name := range packageData.DevDependencies {
+		packageDeps[name] = struct{}{}
+	}
 
-				if strings.HasPrefix(name, "@") {
-					// HANDLE SCOPED PACKAGES.
-					parts := strings.SplitN(name, "/", 2)
+	// CHECK IF EACH DEPENDENCY IS PRESENT IN node_modules.
+	for dep := range packageDeps {
+		path := filepath.Join("node_modules", filepath.FromSlash(dep))
 
-					if len(parts) == 2 {
-						path = filepath.Join("node_modules", parts[0], parts[1])
-					}
-				} else {
-					path = filepath.Join("node_modules", name)
-				}
-
-				if path != "" {
-					if _, err := os.Stat(path); err == nil {
-						installedPackages[name] = true
-					}
-				}
-			}
+		if _, err := os.Stat(path); err == nil {
+			installedPackages[dep] = true
 		}
 	}
 
-	// IF WE COULDN'T READ package.json, TRY TO SCAN NODE_MODULES DIRECTLY
+	// FALLBACK: SCAN node_modules DIRECTLY IF NO DEPENDENCIES ARE FOUND ABOVE.
 	if len(installedPackages) == 0 {
 		entries, err := os.ReadDir("node_modules")
 
-		if err == nil {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					name := entry.Name()
+		if err != nil {
+			return nil, err
+		}
 
-					// HANDLE @scope DIRECTORIES
-					if strings.HasPrefix(name, "@") {
-						scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
+		for _, entry := range entries {
+			if entry.IsDir() {
+				name := entry.Name()
 
-						if err == nil {
-							for _, scopedEntry := range scopedEntries {
-								if scopedEntry.IsDir() {
-									installedPackages[name+"/"+scopedEntry.Name()] = true
-								}
+				if strings.HasPrefix(name, "@") {
+					scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
+
+					if err == nil {
+						for _, scopedEntry := range scopedEntries {
+							if scopedEntry.IsDir() {
+								packageName := name + "/" + scopedEntry.Name()
+								installedPackages[packageName] = true
 							}
 						}
-					} else {
-						installedPackages[name] = true
 					}
+				} else {
+					installedPackages[name] = true
 				}
 			}
 		}

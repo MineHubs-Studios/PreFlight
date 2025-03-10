@@ -1,6 +1,7 @@
 package core
 
 import (
+	"PreFlight/config"
 	"PreFlight/modules"
 	"PreFlight/utils"
 	"os"
@@ -45,7 +46,7 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 		packageManagers = filteredPMs
 	}
 
-	// USE A SET TO AVOID PACKAGE MANAGER DUPLICATIONS.
+	// USE A SET TO AVOID PACKAGE MANAGER DUPLICATIONS
 	pmSet := make(map[string]struct{})
 
 	for _, pm := range packageManagers {
@@ -54,18 +55,23 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 
 	// PROCESS COMPOSER DEPENDENCIES.
 	if _, exists := pmSet["composer"]; exists {
-		_, _, composerDeps, success := utils.ReadComposerJSON()
+		composerConfig := config.LoadComposerConfig()
 
-		if success && len(composerDeps) > 0 {
-			// SORT FOR CONSISTENT OUTPUT.
-			sort.Strings(composerDeps)
-			result.Dependencies["composer"] = composerDeps
+		if composerConfig.HasJSON && composerConfig.Error == nil {
+			composerDeps := append(composerConfig.Dependencies, composerConfig.DevDependencies...)
+
+			if len(composerDeps) > 0 {
+				sort.Strings(composerDeps)
+				result.Dependencies["composer"] = composerDeps
+			} else {
+				result.Dependencies["composer"] = []string{}
+			}
 		} else {
 			result.Dependencies["composer"] = []string{}
 		}
 	}
 
-	// PROCESS NPM/PNPM/Yarn DEPENDENCIES (THEY ALL USE package.json).
+	// PROCESS NPM/PNPM/Yarn DEPENDENCIES (package.json).
 	jsPackageManagers := []string{"npm", "pnpm", "yarn"}
 	hasJSPackageManager := false
 
@@ -77,16 +83,13 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 	}
 
 	if hasJSPackageManager {
-		_, npmDeps, success := utils.ReadPackageJSON()
-
-		if success && len(npmDeps) > 0 {
-			// SORT FOR CONSISTENT OUTPUT.
-			sort.Strings(npmDeps)
-
-			// SAVE UNDER APPROPRIATE KEYS.
+		pkgConfig := config.LoadPackageConfig()
+		if pkgConfig.HasJSON && pkgConfig.Error == nil {
+			allDeps := append(pkgConfig.Dependencies, pkgConfig.DevDependencies...)
+			sort.Strings(allDeps)
 			for _, pm := range jsPackageManagers {
 				if _, exists := pmSet[pm]; exists {
-					result.Dependencies[pm] = npmDeps
+					result.Dependencies[pm] = allDeps
 				}
 			}
 		} else {
@@ -100,7 +103,7 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 
 	// PROCESS GO MODULE DEPENDENCIES
 	if _, exists := pmSet["go"]; exists {
-		goDeps, err := modules.GetRequiredGoModules()
+		goDeps, err := modules.GetGoModules()
 
 		if err == nil && len(goDeps) > 0 {
 			sort.Strings(goDeps)
@@ -115,23 +118,19 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 
 // detectAvailablePackageManagers CHECKS WHICH PACKAGE MANAGERS ARE AVAILABLE IN THE PROJECT
 func detectAvailablePackageManagers() []string {
-	availablePMs := make([]string, 0)
+	var availablePMs []string
 
-	// CHECK FOR Composer (composer.json).
 	if _, err := os.Stat("composer.json"); !os.IsNotExist(err) {
 		availablePMs = append(availablePMs, "composer")
 	}
 
-	// CHECK FOR JS PACKAGE MANAGERS (package.json)
-	if _, err := os.Stat("package.json"); !os.IsNotExist(err) {
-		pm := modules.DeterminePackageManager()
+	packageConfig := config.LoadPackageConfig()
+	pm := modules.DeterminePackageManager(packageConfig)
 
-		if pm.Command != "" {
-			availablePMs = append(availablePMs, pm.Command)
-		}
+	if packageConfig.HasJSON && pm.Command != "" {
+		availablePMs = append(availablePMs, pm.Command)
 	}
 
-	// CHECK FOR Go MODULES (go.mod)
 	if _, err := os.Stat("go.mod"); !os.IsNotExist(err) {
 		availablePMs = append(availablePMs, "go")
 	}

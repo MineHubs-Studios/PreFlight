@@ -35,9 +35,9 @@ Multiple package managers can be specified except that npm and pnpm cannot be us
 				}
 
 				// CHECK FOR NPM AND PNPM CONFLICT.
-				if pm == "npm" || pm == "pnpm" {
+				if pm == "npm" || pm == "pnpm" || pm == "yarn" {
 					if hasNodePM {
-						fmt.Printf(core.Red+"%sError: You can't use npm and pnpm at the same time.%s\n",
+						fmt.Printf(core.Red+"%sError: You can't use npm, pnpm and yarn at the same time.%s\n",
 							core.Red, core.Reset)
 						return
 					}

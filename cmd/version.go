@@ -35,6 +35,7 @@ var versionCmd = &cobra.Command{
 
 		if versionData.Version == "development" {
 			ow.Printf("Version:         %s\n", versionData.Version)
+
 			if versionData.Error == nil {
 				ow.Printf("Latest version:  %s (GitHub)\n", versionData.LatestVersion)
 			} else {

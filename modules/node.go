@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"PreFlight/config"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -29,11 +30,17 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 
 	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
 
-	// CHECK IF A SPECIFIC Node.js VERSION IS REQUIRED.
-	requiredVersion, _, found := utils.ReadPackageJSON()
+	packageConfig := config.LoadPackageConfig()
 
-	if found && requiredVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersion, requiredVersion); isValid {
+	if packageConfig.Error != nil {
+		warnings = append(warnings, packageConfig.Error.Error())
+		return errors, warnings, successes
+	}
+
+	if packageConfig.NodeVersion != "" {
+		isValid, feedback := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
+
+		if isValid {
 			successes = append(successes, feedback)
 		} else {
 			errors = append(errors, feedback)
