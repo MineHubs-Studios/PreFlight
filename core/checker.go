@@ -60,12 +60,13 @@ func RunChecks(ctx context.Context) int {
 		default:
 		}
 
-		if !module.IsApplicable(ctx) {
-			// SKIP TO THE NEXT MODULE.
+		moduleStart := time.Now()
+
+		errors, warnings, successes := module.CheckRequirements(ctx)
+
+		if len(errors) == 0 && len(warnings) == 0 && len(successes) == 0 {
 			continue
 		}
-
-		moduleStart := time.Now()
 
 		if !ow.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name()) {
 			return 0
@@ -86,10 +87,6 @@ func RunChecks(ctx context.Context) int {
 		}
 
 		showProgress(100)
-
-		errors, warnings, successes := module.CheckRequirements(ctx, map[string]interface{}{
-			"environment": "production",
-		})
 
 		result := CheckResult{
 			Scope:     module.Name(),

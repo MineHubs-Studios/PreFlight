@@ -15,53 +15,40 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
-func (c ComposerModule) IsApplicable(ctx context.Context) bool {
-	if ctx.Err() != nil {
-		return false
-	}
-
-	// CHECK IF Composer IS INSTALLED.
-	_, err := getComposerVersion(ctx)
-
-	if err == nil {
-		return true
-	}
-
-	// CHECK IF composer.json OR composer.lock EXISTS.
-	if _, err := os.Stat("composer.json"); err == nil {
-		return true
-	}
-
-	if _, err := os.Stat("composer.lock"); err == nil {
-		return true
-	}
-
-	return false
-}
-
-func (c ComposerModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	composerVersion, _ := getComposerVersion(ctx)
+	// IF composer.json OR composer.lock IS NOT FOUND, THEN SKIP.
+	if _, errJson := os.Stat("composer.json"); os.IsNotExist(errJson) {
+		if _, errLock := os.Stat("composer.lock"); os.IsNotExist(errLock) {
+			return nil, nil, nil
+		}
+	}
+
+	// CHECK IF COMPOSER IS INSTALLED.
+	composerVersion, err := getComposerVersion(ctx)
+
+	if err != nil {
+		errors = append(errors, "Composer is not installed or not available in path.")
+		return errors, warnings, successes
+	}
+
 	successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
+
+	// CHECK IF composer.json EXISTS.
+	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {
+		warnings = append(warnings, "composer.lock exists without composer.json. Consider including composer.json.")
+		return errors, warnings, successes
+	}
 
 	// READ composer.json TO EXTRACT REQUIRED NODE VERSION AND DEPENDENCIES.
 	_, _, composerDeps, found := utils.ReadComposerJSON()
 
-	// HANDLE MISSING composer.json.
 	if !found {
-		errors = append(errors, "composer.json not found.")
-
-		// CHECK FOR composer.lock IF composer.json IS MISSING.
-		if _, err := os.Stat("composer.lock"); err == nil {
-			warnings = append(warnings, "composer.lock exists. Ensure composer.json is included.")
-		} else {
-			warnings = append(warnings, "No composer.lock found.")
-		}
-
+		errors = append(errors, "composer.json exists but could not be read. Please check file format.")
 		return errors, warnings, successes
 	}
 

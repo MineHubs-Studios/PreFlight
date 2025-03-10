@@ -14,28 +14,19 @@ func (n NodeModule) Name() string {
 	return "Node"
 }
 
-func (n NodeModule) IsApplicable(ctx context.Context) bool {
-	if ctx.Err() != nil {
-		return false
-	}
-
-	// CHECK IF Node.js IS INSTALLED.
-	_, err := getNodeVersion(ctx)
-
-	if err == nil {
-		return true
-	}
-
-	return false
-}
-
-func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	nodeVersion, _ := getNodeVersion(ctx)
+	nodeVersion, err := getNodeVersion(ctx)
+
+	// IF node.js IS NOT INSTALLED, THEN SKIP.
+	if err != nil {
+		return nil, nil, nil
+	}
+
 	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
 
 	// CHECK IF A SPECIFIC Node.js VERSION IS REQUIRED.

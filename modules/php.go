@@ -15,32 +15,29 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
-func (p PhpModule) IsApplicable(ctx context.Context) bool {
-	if ctx.Err() != nil {
-		return false
-	}
-
-	// CHECK IF PHP IS INSTALLED.
-	_, err := getPhpVersion(ctx)
-
-	if err == nil {
-		return true
-	}
-
-	return false
-}
-
-func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
+	// CHECK PHP VERSION.
 	phpVersion, err := getPhpVersion(ctx)
+
+	// IF PHP IS NOT INSTALLED, THEN SKIP.
+	if err != nil {
+		return nil, nil, nil
+	}
+
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
 
 	// READ PHP REQUIREMENTS FROM composer.json.
-	phpVersionRequirement, requiredExtensions, _, _ := utils.ReadComposerJSON()
+	phpVersionRequirement, requiredExtensions, _, composerExists := utils.ReadComposerJSON()
+
+	// IF composer.json IS NOT FOUND, THEN SKIP.
+	if !composerExists {
+		return errors, warnings, successes
+	}
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if phpVersionRequirement != "" {
@@ -53,20 +50,22 @@ func (p PhpModule) CheckRequirements(ctx context.Context, params map[string]inte
 		}
 	}
 
-	// GET ALL INSTALLED PHP EXTENSIONS.
-	installedExtensions, err := getPhpExtensions(ctx)
+	if len(requiredExtensions) > 0 {
+		// GET ALL INSTALLED PHP EXTENSIONS.
+		installedExtensions, err := getPhpExtensions(ctx)
 
-	if err != nil {
-		errors = append(errors, fmt.Sprintf("Failed to check PHP extensions: %v", err))
-		return errors, warnings, successes
-	}
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("Failed to check PHP extensions: %v", err))
+			return errors, warnings, successes
+		}
 
-	// CHECK REQUIRED PHP EXTENSIONS.
-	for _, ext := range requiredExtensions {
-		if _, exists := installedExtensions[ext]; !exists {
-			errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
-		} else {
-			successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+		// CHECK REQUIRED PHP EXTENSIONS.
+		for _, ext := range requiredExtensions {
+			if _, exists := installedExtensions[ext]; !exists {
+				errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
+			} else {
+				successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+			}
 		}
 	}
 

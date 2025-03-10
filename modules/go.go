@@ -15,39 +15,35 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
-func (g GoModule) IsApplicable(ctx context.Context) bool {
-	if ctx.Err() != nil {
-		return false
-	}
-
-	// CHECK IF Go IS INSTALLED.
-	_, err := getGoVersion(ctx)
-
-	if err == nil {
-		return true
-	}
-
-	return false
-}
-
-func (g GoModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
 	goVersion, err := getGoVersion(ctx)
+
+	// IF go IS NOT INSTALLED, THEN SKIP.
+	if err != nil {
+		return nil, nil, nil
+	}
+
 	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
+
+	// IF go.mod OR composer.lock IS NOT FOUND, THEN SKIP.
+	if _, errJson := os.Stat("go.mod"); os.IsNotExist(errJson) {
+		return errors, warnings, successes
+	}
+
+	successes = append(successes, "go.mod found.")
 
 	requiredGoVersion := getGoVersionRequirement()
 
-	// CHECK IF go.mod EXISTS
+	// CHECK go VERSION.
 	if requiredGoVersion != "" {
 		isValid, feedback := utils.ValidateVersion(goVersion, requiredGoVersion)
 
-		if isValid {
-			successes = append(successes, feedback)
-		} else {
+		if !isValid {
 			errors = append(errors, feedback)
 		}
 	} else {
@@ -58,7 +54,7 @@ func (g GoModule) CheckRequirements(ctx context.Context, params map[string]inter
 	requiredModules, err := GetRequiredGoModules()
 
 	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("Could not parse dependencies: %v", err))
+		warnings = append(warnings, fmt.Sprintf("Could not parse dependencies: %v", err)) // SILENT THIS AND ONLY CHECK DEPENDENCIES IF go.mod is found!
 	}
 
 	// CHECK IF REQUIRED MODULES ARE INSTALLED.
@@ -93,13 +89,8 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return versionOutput, nil
 }
 
-// getGoVersionRequirement RETURNS THE GO VERSION REQUIREMENT.
+// getGoVersionRequirement RETURNS THE GO VERSION REQUIREMENT. dd
 func getGoVersionRequirement() string {
-	// CHECK IF go.mod EXISTS.
-	if _, err := os.Stat("go.mod"); err != nil {
-		return ""
-	}
-
 	// READ go.mod FILE.
 	content, err := os.ReadFile("go.mod")
 
@@ -132,7 +123,7 @@ func GetRequiredGoModules() ([]string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to run 'go list -m all': %w", err)
+		return nil, fmt.Errorf("failed to run 'go list -m all'")
 	}
 
 	lines := strings.Split(string(output), "\n")
@@ -149,7 +140,7 @@ func GetRequiredGoModules() ([]string, error) {
 		// EXTRACT MODULE NAME (BEFORE ANY VERSION NUMBERS).
 		parts := strings.Fields(line)
 
-		if len(parts) > 0 {
+		if len(parts) > 0 && parts[0] != "" {
 			modules = append(modules, parts[0])
 		}
 	}
@@ -159,6 +150,10 @@ func GetRequiredGoModules() ([]string, error) {
 
 // isGoModuleInstalled CHECKS IF A SPECIFIC MODULE IS INSTALLED.
 func isGoModuleInstalled(ctx context.Context, moduleName string) bool {
+	if moduleName == "" {
+		return false
+	}
+
 	cmd := exec.CommandContext(ctx, "go", "list", "-m", moduleName)
 	err := cmd.Run()
 
