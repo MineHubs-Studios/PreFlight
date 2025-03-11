@@ -15,78 +15,71 @@ type CheckResult struct {
 	Successes []string
 }
 
-const (
-	progressIncrement = 25
-	progressSleep     = 200 * time.Millisecond
-)
-
-func showProgress(percent int) {
-	fullBlocks := percent / 5
-	emptyBlocks := 20 - fullBlocks
-
-	var sb strings.Builder
-	sb.Grow(50)
-
-	sb.WriteString("\r    [")
-	sb.WriteString(strings.Repeat(BlockFull, fullBlocks))
-	sb.WriteString(strings.Repeat(BlockEmpty, emptyBlocks))
-	sb.WriteString("] ")
-	sb.WriteString(Green)
-	sb.WriteString(fmt.Sprintf("%d", percent))
-	sb.WriteString("%")
-	sb.WriteString(Reset)
-
-	fmt.Print(sb.String())
-}
-
 func RunChecks(ctx context.Context) int {
 	modules := SortModules(GetModules())
 	categorizedResults := make([]CheckResult, 0, len(modules))
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(Bold + "🚀 Running system setup checks...") {
+	if !ow.Println(Bold + Blue + "\n╭─────────────────────────────────────────╮" + Reset) {
+		return 0
+	}
+
+	if !ow.Println(Bold + Blue + "│" + Cyan + Bold + "  🚀 PreFlight Checker  " + Reset) {
+		return 0
+	}
+
+	if !ow.Println(Bold + Blue + "╰─────────────────────────────────────────╯" + Reset) {
+		return 0
+	}
+
+	if !ow.Println(Bold + "\nProcessing modules.." + Reset) {
 		return 0
 	}
 
 	for _, module := range modules {
-		// CHECK FOR CANCELLATION.
 		select {
 		case <-ctx.Done():
 			if !ow.Println("\nChecks cancelled...") {
 				return 0
 			}
-
 			return 1
 		default:
 		}
 
 		moduleStart := time.Now()
 
-		errors, warnings, successes := module.CheckRequirements(ctx)
-
-		if len(errors) == 0 && len(warnings) == 0 && len(successes) == 0 {
-			continue
-		}
-
-		if !ow.Printf(Bold+"\n🔍 Running checks for module: %s\n", module.Name()) {
+		if !ow.Printf("  %s %s %s", Yellow+TimeGlass+Reset, Bold+module.Name()+Reset, Yellow+"..."+Reset) {
 			return 0
 		}
 
-		for progress := 0; progress <= 100; progress += progressIncrement {
-			select {
-			case <-ctx.Done():
-				if !ow.Flush() {
-					return 0
-				}
+		errors, warnings, successes := module.CheckRequirements(ctx)
 
-				return 1
-			default:
-				showProgress(progress)
-				time.Sleep(progressSleep)
+		moduleDuration := time.Since(moduleStart)
+
+		if len(errors) == 0 && len(warnings) == 0 && len(successes) == 0 {
+			if !ow.Printf("\r%s\r", strings.Repeat(" ", 50)) {
+				return 0
 			}
+
+			continue
 		}
 
-		showProgress(100)
+		var statusColor, statusSymbol string
+
+		if len(errors) > 0 {
+			statusColor = Red
+			statusSymbol = CrossMark
+		} else if len(warnings) > 0 {
+			statusColor = Yellow
+			statusSymbol = WarningSign
+		} else {
+			statusColor = Green
+			statusSymbol = CheckMark
+		}
+
+		if !ow.Printf("\r  %s %s completed (%dms)\n", statusColor+statusSymbol+Reset, Bold+module.Name()+Reset, moduleDuration.Milliseconds()) {
+			return 0
+		}
 
 		result := CheckResult{
 			Scope:     module.Name(),
@@ -96,15 +89,9 @@ func RunChecks(ctx context.Context) int {
 		}
 
 		categorizedResults = append(categorizedResults, result)
-
-		moduleDuration := time.Since(moduleStart)
-
-		if !ow.Printf("\n      %s⏱ Completed in: %dms%s\n", Yellow, moduleDuration.Milliseconds(), Reset) {
-			return 0
-		}
 	}
 
-	if !ow.PrintNewLines(2) {
+	if !ow.PrintNewLines(1) {
 		return 0
 	}
 
@@ -217,22 +204,32 @@ func finalMessage(results []CheckResult) int {
 		totalWarnings += len(result.Warnings)
 	}
 
-	var finalMessage string
+	var statusIcon, statusColor, statusText string
 	var exitCode int
 
 	if totalErrors > 0 {
-		finalMessage = Bold + Red + "System setup check completed, resolve the above issues before proceeding." + Reset
+		statusIcon = CrossMark
+		statusColor = Red
+		statusText = "Check completed, please resolve."
 		exitCode = 1
 	} else if totalWarnings > 0 {
-		finalMessage = Bold + Yellow + "System setup check completed with warnings, review them before proceeding." + Reset
+		statusIcon = WarningSign
+		statusColor = Yellow
+		statusText = "Check completed with warnings, please review."
 		exitCode = 0
 	} else {
-		finalMessage = Bold + Green + "System setup check completed successfully! All required tools and configurations are in place." + Reset
+		statusIcon = CheckMark
+		statusColor = Green
+		statusText = "Check completed successfully!"
 		exitCode = 0
 	}
 
 	currentTime := time.Now().Format("02-01-2006 15:04:05")
 
-	fmt.Printf("\n%s (Completed at: %s)\n", finalMessage, currentTime)
+	fmt.Println(Bold + Blue + "\n╭────────────────────────────────────────────────────────────────╮" + Reset)
+	fmt.Printf(Bold + Blue + "│ " + statusColor + statusIcon + " Status: " + statusText + Reset + "\n")
+	fmt.Printf(Bold + Blue + "│ " + Dim + Clock + " Ended: " + currentTime + Reset + "\n")
+	fmt.Println(Bold + Blue + "╰────────────────────────────────────────────────────────────────╯" + Reset)
+
 	return exitCode
 }

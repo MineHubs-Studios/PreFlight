@@ -27,7 +27,7 @@ var versionCmd = &cobra.Command{
 		)
 
 		ow.PrintNewLines(1)
-		ow.Println(core.Bold + core.Yellow + "PreFlight - Version Information" + core.Reset + core.Bold)
+		ow.Println(core.Bold + core.Cyan + "PreFlight - Version Information" + core.Reset + core.Bold)
 		ow.Println(core.Border)
 
 		// WAIT FOR THE ASYNC OPERATION TO COMPLETE.

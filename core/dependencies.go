@@ -142,11 +142,19 @@ func detectAvailablePackageManagers() []string {
 func PrintDependencies(result DependencyResult) bool {
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(Bold + "🔍 Scanning project for dependencies...") {
+	if !ow.Println(Bold + Blue + "\n╭─────────────────────────────────────────╮" + Reset) {
 		return false
 	}
 
-	if !ow.Println("") {
+	if !ow.Println(Bold + Blue + "│" + Cyan + Bold + "  🚀 Scanning project for dependencies  " + Reset) {
+		return false
+	}
+
+	if !ow.Println(Bold + Blue + "╰─────────────────────────────────────────╯" + Reset) {
+		return false
+	}
+
+	if !ow.PrintNewLines(1) {
 		return false
 	}
 
