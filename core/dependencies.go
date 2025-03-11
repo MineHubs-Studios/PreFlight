@@ -103,11 +103,11 @@ func GetAllDependencies(packageManagers []string) DependencyResult {
 
 	// PROCESS GO MODULE DEPENDENCIES
 	if _, exists := pmSet["go"]; exists {
-		goDeps, err := modules.GetGoModules()
+		goConfig := config.LoadGoConfig()
 
-		if err == nil && len(goDeps) > 0 {
-			sort.Strings(goDeps)
-			result.Dependencies["go"] = goDeps
+		if goConfig.Error == nil && len(goConfig.Modules) > 0 {
+			sort.Strings(goConfig.Modules)
+			result.Dependencies["go"] = goConfig.Modules
 		} else {
 			result.Dependencies["go"] = []string{}
 		}

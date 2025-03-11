@@ -1,10 +1,10 @@
 package modules
 
 import (
+	"PreFlight/config"
 	"PreFlight/utils"
 	"context"
 	"fmt"
-	"os"
 	"os/exec"
 	"strings"
 )
@@ -23,46 +23,43 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	goVersion, err := getGoVersion(ctx)
 
-	// IF go IS NOT INSTALLED, THEN SKIP.
+	// IF Go IS NOT INSTALLED, THEN SKIP.
 	if err != nil {
 		return nil, nil, nil
 	}
 
 	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
 
-	// IF go.mod OR composer.lock IS NOT FOUND, THEN SKIP.
-	if _, errJson := os.Stat("go.mod"); os.IsNotExist(errJson) {
+	goConfig := config.LoadGoConfig()
+
+	if !goConfig.HasMod {
+		return errors, warnings, successes
+	}
+
+	if goConfig.Error != nil {
+		errors = append(errors, fmt.Sprintf("Error parsing go.mod: %v", goConfig.Error))
 		return errors, warnings, successes
 	}
 
 	successes = append(successes, "go.mod found.")
 
-	requiredGoVersion := getGoVersionRequirement()
+	if goConfig.RequiredGoVersion != "" {
+		isValid, feedback := utils.ValidateVersion(goVersion, goConfig.RequiredGoVersion)
 
-	// CHECK go VERSION.
-	if requiredGoVersion != "" {
-		isValid, feedback := utils.ValidateVersion(goVersion, requiredGoVersion)
-
-		if !isValid {
+		if isValid && feedback != "" {
+			successes = append(successes, feedback)
+		} else if !isValid {
 			errors = append(errors, feedback)
 		}
 	} else {
 		warnings = append(warnings, "Go version requirement not specified in go.mod.")
 	}
 
-	// READ go.mod TO FIND REQUIREMENTS.
-	goModules, err := GetGoModules()
-
-	if err != nil {
-		warnings = append(warnings, fmt.Sprintf("Could not parse modules: %v", err)) // SILENT THIS AND ONLY CHECK DEPENDENCIES IF go.mod is found!
-	}
-
-	// CHECK IF go MODULES ARE INSTALLED.
-	for _, module := range goModules {
-		if getInstalledModules(ctx, module) {
-			successes = append(successes, fmt.Sprintf("Go module %s is installed.", module))
+	for _, mod := range goConfig.Modules {
+		if getInstalledModules(ctx, mod) {
+			successes = append(successes, fmt.Sprintf("Go module %s is installed.", mod))
 		} else {
-			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", module, module))
+			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", mod, mod))
 		}
 	}
 
@@ -75,10 +72,9 @@ func getGoVersion(ctx context.Context) (string, error) {
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", fmt.Errorf("failed to run 'go version': %w", err)
+		return "", err
 	}
 
-	// EXTRACT VERSION FROM OUTPUT (FORMAT: "go version go1.18.3 darwin/amd64").
 	versionOutput := strings.TrimSpace(string(output))
 	parts := strings.Split(versionOutput, " ")
 
@@ -86,74 +82,11 @@ func getGoVersion(ctx context.Context) (string, error) {
 		return strings.TrimPrefix(parts[2], "go"), nil
 	}
 
-	return versionOutput, nil
-}
-
-// getGoVersionRequirement RETURNS THE GO VERSION REQUIREMENT. dd
-func getGoVersionRequirement() string {
-	// READ go.mod FILE.
-	content, err := os.ReadFile("go.mod")
-
-	if err != nil {
-		fmt.Println("Could not read go.mod file:", err)
-
-		return ""
-	}
-
-	fileContent := string(content)
-	lines := strings.Split(fileContent, "\n")
-
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-
-		if strings.HasPrefix(line, "go ") {
-			version := strings.TrimPrefix(line, "go ")
-
-			return version
-		}
-	}
-
-	return ""
-}
-
-// GetGoModules RETURNS A LIST OF REQUIRED GO MODULES.
-func GetGoModules() ([]string, error) {
-	// RUN 'go list -m all' TO GET A LIST OF ALL DEPENDENCIES.
-	cmd := exec.Command("go", "list", "-m", "all")
-	output, err := cmd.Output()
-
-	if err != nil {
-		return nil, fmt.Errorf("failed to run 'go list -m all'")
-	}
-
-	lines := strings.Split(string(output), "\n")
-	var modules []string
-
-	// START FROM 1 TO SKIP THE CURRENT MODULE.
-	for i := 1; i < len(lines); i++ {
-		line := strings.TrimSpace(lines[i])
-
-		if line == "" {
-			continue
-		}
-
-		// EXTRACT MODULE NAME (BEFORE ANY VERSION NUMBERS).
-		parts := strings.Fields(line)
-
-		if len(parts) > 0 && parts[0] != "" {
-			modules = append(modules, parts[0])
-		}
-	}
-
-	return modules, nil
+	return "", fmt.Errorf("unexpected go version format: %s", versionOutput)
 }
 
 // getInstalledModules CHECKS IF A SPECIFIC MODULE IS INSTALLED.
 func getInstalledModules(ctx context.Context, moduleName string) bool {
-	if moduleName == "" {
-		return false
-	}
-
 	cmd := exec.CommandContext(ctx, "go", "list", "-m", moduleName)
 	err := cmd.Run()
 
