@@ -7,6 +7,11 @@ import (
 	"strings"
 )
 
+type ComposerJSON struct {
+	Require    map[string]string `json:"require"`
+	RequireDev map[string]string `json:"require-dev"`
+}
+
 type ComposerConfig struct {
 	PHPVersion      string
 	PHPExtensions   []string
@@ -21,48 +26,50 @@ type ComposerConfig struct {
 func LoadComposerConfig() ComposerConfig {
 	composerConfig := ComposerConfig{}
 
-	if _, err := os.Stat("composer.json"); os.IsNotExist(err) {
-		composerConfig.HasJSON = false
-	} else {
+	if _, err := os.Stat("composer.json"); err == nil {
 		composerConfig.HasJSON = true
-		file, err := os.ReadFile("composer.json")
+	}
 
-		if err != nil {
-			composerConfig.Error = fmt.Errorf("could not read composer.json: %w", err)
-			return composerConfig
-		}
+	if _, err := os.Stat("composer.lock"); err == nil {
+		composerConfig.HasLock = true
+	}
 
-		var data map[string]interface{}
+	if !composerConfig.HasJSON {
+		return composerConfig
+	}
 
-		if err := json.Unmarshal(file, &data); err != nil {
-			composerConfig.Error = fmt.Errorf("json parsing composer.json error: %w", err)
-			return composerConfig
-		}
+	file, err := os.ReadFile("composer.json")
 
-		if require, ok := data["require"].(map[string]interface{}); ok {
-			for dep, version := range require {
-				switch {
-				case dep == "php":
-					composerConfig.PHPVersion = fmt.Sprintf("%v", version)
-				case strings.HasPrefix(dep, "ext-"):
-					composerConfig.PHPExtensions = append(composerConfig.PHPExtensions, strings.TrimPrefix(dep, "ext-"))
-				default:
-					composerConfig.Dependencies = append(composerConfig.Dependencies, dep)
-				}
-			}
-		}
+	if err != nil {
+		composerConfig.Error = fmt.Errorf("unable to read composer.json: %w", err)
+		return composerConfig
+	}
 
-		if requireDev, ok := data["require-dev"].(map[string]interface{}); ok {
-			for dep := range requireDev {
-				composerConfig.DevDependencies = append(composerConfig.DevDependencies, dep)
-			}
+	var data ComposerJSON
+
+	if err := json.Unmarshal(file, &data); err != nil {
+		composerConfig.Error = fmt.Errorf("unable to parse composer.json: %w", err)
+		return composerConfig
+	}
+
+	composerConfig.Dependencies = make([]string, 0, len(data.Require))
+	composerConfig.PHPExtensions = make([]string, 0, len(data.Require))
+
+	for dep, version := range data.Require {
+		switch {
+		case dep == "php":
+			composerConfig.PHPVersion = version
+		case strings.HasPrefix(dep, "ext-"):
+			composerConfig.PHPExtensions = append(composerConfig.PHPExtensions, strings.TrimPrefix(dep, "ext-"))
+		default:
+			composerConfig.Dependencies = append(composerConfig.Dependencies, dep)
 		}
 	}
 
-	if _, err := os.Stat("composer.lock"); os.IsNotExist(err) {
-		composerConfig.HasLock = false
-	} else {
-		composerConfig.HasLock = true
+	composerConfig.DevDependencies = make([]string, 0, len(data.RequireDev))
+
+	for devDep := range data.RequireDev {
+		composerConfig.DevDependencies = append(composerConfig.DevDependencies, devDep)
 	}
 
 	return composerConfig

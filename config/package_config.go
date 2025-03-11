@@ -7,6 +7,14 @@ import (
 	"strings"
 )
 
+type PackageJSON struct {
+	Engines struct {
+		Node string `json:"node"`
+	} `json:"engines"`
+	Dependencies    map[string]string `json:"dependencies"`
+	DevDependencies map[string]string `json:"devDependencies"`
+}
+
 type PackageConfig struct {
 	NodeVersion     string
 	Dependencies    []string
@@ -38,38 +46,35 @@ func LoadPackageConfig() PackageConfig {
 		packageConfig.HasPnpmLock = true
 	}
 
-	if packageConfig.HasJSON {
-		file, err := os.ReadFile("package.json")
+	if !packageConfig.HasJSON {
+		return packageConfig
+	}
 
-		if err != nil {
-			packageConfig.Error = fmt.Errorf("could not read package.json: %w", err)
-			return packageConfig
-		}
+	file, err := os.ReadFile("package.json")
 
-		var data map[string]interface{}
+	if err != nil {
+		packageConfig.Error = fmt.Errorf("unable to read package.json: %w", err)
+		return packageConfig
+	}
 
-		if err := json.Unmarshal(file, &data); err != nil {
-			packageConfig.Error = fmt.Errorf("json parsing package.json error: %w", err)
-			return packageConfig
-		}
+	var data PackageJSON
 
-		if engines, ok := data["engines"].(map[string]interface{}); ok {
-			if node, exists := engines["node"].(string); exists {
-				packageConfig.NodeVersion = strings.TrimSpace(node)
-			}
-		}
+	if err := json.Unmarshal(file, &data); err != nil {
+		packageConfig.Error = fmt.Errorf("unable to parse package.json: %w", err)
+		return packageConfig
+	}
 
-		if deps, ok := data["dependencies"].(map[string]interface{}); ok {
-			for dep := range deps {
-				packageConfig.Dependencies = append(packageConfig.Dependencies, dep)
-			}
-		}
+	packageConfig.NodeVersion = strings.TrimSpace(data.Engines.Node)
+	packageConfig.Dependencies = make([]string, 0, len(data.Dependencies))
 
-		if devDeps, ok := data["devDependencies"].(map[string]interface{}); ok {
-			for dep := range devDeps {
-				packageConfig.DevDependencies = append(packageConfig.DevDependencies, dep)
-			}
-		}
+	for dep := range data.Dependencies {
+		packageConfig.Dependencies = append(packageConfig.Dependencies, dep)
+	}
+
+	packageConfig.DevDependencies = make([]string, 0, len(data.DevDependencies))
+
+	for devDep := range data.DevDependencies {
+		packageConfig.DevDependencies = append(packageConfig.DevDependencies, devDep)
 	}
 
 	return packageConfig

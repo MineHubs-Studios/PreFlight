@@ -17,7 +17,7 @@ type GoConfig struct {
 func LoadGoConfig() GoConfig {
 	var goConfig GoConfig
 
-	if _, err := os.Stat("go.mod"); os.IsNotExist(err) {
+	if _, err := os.Stat("go.mod"); err != nil {
 		goConfig.HasMod = false
 		return goConfig
 	}
@@ -34,6 +34,8 @@ func LoadGoConfig() GoConfig {
 	lines := strings.Split(string(data), "\n")
 
 	var insideRequireBlock bool
+
+	goConfig.Modules = make([]string, 0, len(lines))
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
