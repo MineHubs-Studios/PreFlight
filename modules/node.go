@@ -47,6 +47,15 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 		}
 	}
 
+	// CHECK FOR EOL NODE VERSIONS.
+	eolVersions := []string{"10.", "12.", "14.", "15.", "16.", "17.", "18."}
+
+	for _, eolVersion := range eolVersions {
+		if strings.HasPrefix(nodeVersion, "v"+eolVersion) {
+			warnings = append(warnings, fmt.Sprintf("Detected Node.js version %s is End-of-Life (EOL). Consider upgrading!", nodeVersion))
+		}
+	}
+
 	return errors, warnings, successes
 }
 

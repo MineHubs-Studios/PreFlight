@@ -55,21 +55,50 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		}
 	}
 
+	// CHECK FOR EOL PHP VERSIONS.
+	eolVersions := []string{"7.4", "8.0"}
+
+	for _, eolVersion := range eolVersions {
+		if strings.HasPrefix(phpVersion, eolVersion+".") {
+			warnings = append(warnings, fmt.Sprintf("Detected PHP version %s is End-of-Life (EOL). Consider upgrading!", phpVersion))
+		}
+	}
+
 	if len(composerConfig.PHPExtensions) > 0 {
 		// GET ALL INSTALLED PHP EXTENSIONS.
-		PHPExtensions, err := getPhpExtensions(ctx)
+		installedExtensions, err := getPhpExtensions(ctx)
 
 		if err != nil {
 			errors = append(errors, fmt.Sprintf("Failed to check PHP extensions: %v", err))
 			return errors, warnings, successes
 		}
 
+		deprecatedExtensions := map[string]struct{}{
+			"imap": {}, "mysql": {}, "recode": {}, "statistics": {}, "wddx": {}, "xml-rpc": {},
+		}
+
+		experimentalExtensions := map[string]struct{}{
+			"gmagick": {}, "imagemagick": {}, "mqseries": {}, "parle": {}, "rnp": {}, "svm": {}, "svn": {}, "ui": {}, "omq": {},
+		}
+
 		// CHECK REQUIRED PHP EXTENSIONS.
 		for _, ext := range composerConfig.PHPExtensions {
-			if _, exists := PHPExtensions[ext]; !exists {
-				errors = append(errors, fmt.Sprintf("PHP extension %s is missing. Please enable it.", ext))
-			} else {
-				successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+			if _, exists := installedExtensions[ext]; !exists {
+				errors = append(errors, fmt.Sprintf("PHP extension '%s' is missing, please enable it.", ext))
+				continue
+			}
+
+			successes = append(successes, fmt.Sprintf("PHP extension '%s' is installed.", ext))
+
+			// CHECK FOR DEPRECATED EXTENSIONS.
+			if _, deprecated := deprecatedExtensions[ext]; deprecated {
+				warnings = append(warnings, fmt.Sprintf("PHP extension '%s' is deprecated, consider removing or replacing it.", ext))
+				continue
+			}
+
+			// CHECK FOR EXPERIMENTAL EXTENSIONS.
+			if _, experimental := experimentalExtensions[ext]; experimental {
+				warnings = append(warnings, fmt.Sprintf("PHP extension '%s' is experimental, use with caution.", ext))
 			}
 		}
 	}
