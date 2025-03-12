@@ -2,10 +2,12 @@ package modules
 
 import (
 	"PreFlight/config"
+	"PreFlight/utils"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -71,7 +73,39 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		return errors, warnings, successes
 	}
 
-	// SUCCESS THAT package.json IS FOUND:
+	// HANDLE ENGINES IN package.json.
+	enginesConfig := []struct {
+		Cmd     string
+		Name    string
+		Version string
+	}{
+		{"node", "Node", packageConfig.NodeVersion},
+		{"npm", "NPM", packageConfig.NPMVersion},
+		{"pnpm", "PNPM", packageConfig.PNPMVersion},
+		{"yarn", "Yarn", packageConfig.YarnVersion},
+	}
+
+	for _, engine := range enginesConfig {
+		if engine.Version == "" || (engine.Cmd != "node" && engine.Cmd != pm.Command) {
+			continue
+		}
+
+		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output()
+
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", engine.Cmd, err))
+			continue
+		}
+
+		installed := strings.TrimSpace(string(out))
+
+		if valid, msg := utils.ValidateVersion(installed, engine.Version); !valid {
+			warnings = append(warnings, fmt.Sprintf("%s version mismatch. %s", engine.Name, msg))
+		} else {
+			successes = append(successes, fmt.Sprintf("%s version meets the engines requirement (%s).", engine.Cmd, installed))
+		}
+	}
+
 	successes = append(successes, "package.json found.")
 
 	// GET ALL INSTALLED PACKAGES.

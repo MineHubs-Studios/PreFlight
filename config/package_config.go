@@ -10,6 +10,9 @@ import (
 type PackageJSON struct {
 	Engines struct {
 		Node string `json:"node"`
+		NPM  string `json:"npm,omitempty"`
+		PNPM string `json:"pnpm,omitempty"`
+		Yarn string `json:"yarn,omitempty"`
 	} `json:"engines"`
 	Dependencies    map[string]string `json:"dependencies"`
 	DevDependencies map[string]string `json:"devDependencies"`
@@ -17,6 +20,9 @@ type PackageJSON struct {
 
 type PackageConfig struct {
 	NodeVersion     string
+	NPMVersion      string
+	PNPMVersion     string
+	YarnVersion     string
 	Dependencies    []string
 	DevDependencies []string
 	HasJSON         bool
@@ -65,6 +71,10 @@ func LoadPackageConfig() PackageConfig {
 	}
 
 	packageConfig.NodeVersion = strings.TrimSpace(data.Engines.Node)
+	packageConfig.NPMVersion = strings.TrimSpace(data.Engines.NPM)
+	packageConfig.PNPMVersion = strings.TrimSpace(data.Engines.PNPM)
+	packageConfig.YarnVersion = strings.TrimSpace(data.Engines.Yarn)
+
 	packageConfig.Dependencies = make([]string, 0, len(data.Dependencies))
 
 	for dep := range data.Dependencies {
