@@ -19,7 +19,6 @@ linters:
     - unparam        # FIND UNUSED FUNCTION PARAMETER.
     - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
     - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE ALLOCATED.
-    - scopelint      # FIND UNPINNED VARIABLES IN GO ROUTINES.
     - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
 
 linters-settings:
