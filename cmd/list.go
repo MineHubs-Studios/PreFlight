@@ -19,7 +19,8 @@ var listCmd = &cobra.Command{
 	Long: `Lists all dependencies required by this project based on package manager configuration files.
 Multiple package managers can be specified except that npm and pnpm cannot be used simultaneously.`,
 	Example: "preflight list --pm composer,npm",
-	Run: func(cmd *cobra.Command, args []string) {
+	Aliases: []string{"dependencies", "deps"},
+	Run: func(_ *cobra.Command, _ []string) {
 		var packageManagers []string
 
 		if packageManagersList != "" {
@@ -34,9 +35,9 @@ Multiple package managers can be specified except that npm and pnpm cannot be us
 				}
 
 				// CHECK FOR NPM AND PNPM CONFLICT.
-				if pm == "npm" || pm == "pnpm" {
+				if pm == "npm" || pm == "pnpm" || pm == "yarn" {
 					if hasNodePM {
-						fmt.Printf(core.Red+"%sError: You can't use npm and pnpm at the same time.%s\n",
+						fmt.Printf(core.Red+"%sError: You can't use npm, pnpm and yarn at the same time.%s\n",
 							core.Red, core.Reset)
 						return
 					}

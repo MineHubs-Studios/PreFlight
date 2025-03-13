@@ -16,7 +16,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Shows PreFlight version information",
 	Long:  `Shows detailed information about the PreFlight version including version number and build date.`,
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		ow := utils.NewOutputWriter()
 
 		// GET VERSION DATA.
@@ -27,7 +27,7 @@ var versionCmd = &cobra.Command{
 		)
 
 		ow.PrintNewLines(1)
-		ow.Println(core.Bold + core.Yellow + "PreFlight - Version Information" + core.Reset + core.Bold)
+		ow.Println(core.Bold + core.Cyan + "PreFlight - Version Information" + core.Reset + core.Bold)
 		ow.Println(core.Border)
 
 		// WAIT FOR THE ASYNC OPERATION TO COMPLETE.
@@ -35,6 +35,7 @@ var versionCmd = &cobra.Command{
 
 		if versionData.Version == "development" {
 			ow.Printf("Version:         %s\n", versionData.Version)
+
 			if versionData.Error == nil {
 				ow.Printf("Latest version:  %s (GitHub)\n", versionData.LatestVersion)
 			} else {

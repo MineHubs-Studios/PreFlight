@@ -11,7 +11,7 @@ import (
 // Module DEFINES THE CONTRACT FOR SYSTEM CHECK MODULES.
 type Module interface {
 	Name() string
-	CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string)
+	CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string)
 }
 
 var (
@@ -41,39 +41,50 @@ func RegisterModule(module Module, moduleNames ...string) error {
 	modulesMutex.Lock()
 	defer modulesMutex.Unlock()
 
-	// Case 1: DIRECT MODULE REGISTRATION.
 	if module != nil {
-		name := strings.ToLower(module.Name())
-
-		if _, exists := registeredModules[name]; exists {
-			return fmt.Errorf("modul med navnet '%s' er allerede registreret", module.Name())
-		}
-
-		registeredModules[name] = module
-
-		return nil
+		return registerSingleModule(module)
 	}
 
-	// Case 2: NO PARAMETERS, REGISTER ALL AVAILABLE MODULES.
 	if len(moduleNames) == 0 {
-		var errs []string
-
-		for name, mod := range availableModules {
-			if _, exists := registeredModules[name]; !exists {
-				registeredModules[name] = mod
-			} else {
-				errs = append(errs, fmt.Sprintf("modul '%s' er allerede registreret", name))
-			}
-		}
-
-		if len(errs) > 0 {
-			return fmt.Errorf("fejl ved registrering af moduler: %s", strings.Join(errs, "; "))
-		}
-
-		return nil
+		return registerAllModules()
 	}
 
-	// Case 3: REGISTER SPECIFIED MODULES.
+	return registerSpecificModules(moduleNames)
+}
+
+// registerSingleModule HELPER FUNCTION TO REGISTER A SINGLE MODULE.
+func registerSingleModule(module Module) error {
+	name := strings.ToLower(module.Name())
+
+	if _, exists := registeredModules[name]; exists {
+		return fmt.Errorf("modul med navnet '%s' er allerede registreret", module.Name())
+	}
+
+	registeredModules[name] = module
+	return nil
+}
+
+// registerAllModules HELPER FUNCTION TO REGISTER ALL AVAILABLE MODULES.
+func registerAllModules() error {
+	var errs []string
+
+	for name, mod := range availableModules {
+		if _, exists := registeredModules[name]; !exists {
+			registeredModules[name] = mod
+		} else {
+			errs = append(errs, fmt.Sprintf("modul '%s' er allerede registreret", name))
+		}
+	}
+
+	if len(errs) > 0 {
+		return fmt.Errorf("fejl ved registrering af moduler: %s", strings.Join(errs, "; "))
+	}
+
+	return nil
+}
+
+// registerSpecificModules HELPER FUNCTION TO REGISTER SPECIFIC MODULES BY NAME.
+func registerSpecificModules(moduleNames []string) error {
 	var errs []string
 
 	for _, name := range moduleNames {

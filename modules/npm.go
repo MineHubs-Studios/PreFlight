@@ -1,11 +1,13 @@
 package modules
 
 import (
+	"PreFlight/config"
 	"PreFlight/utils"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -21,38 +23,45 @@ type PackageManager struct {
 	LockFile string // ASSOCIATED LOCK FILE.
 }
 
-func DeterminePackageManager() PackageManager {
-	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
+// DeterminePackageManager IDENTIFIES WHICH PACKAGE MANAGER TO USE.
+func DeterminePackageManager(pkgConfig config.PackageConfig) PackageManager {
+	switch {
+	case pkgConfig.HasPnpmLock:
 		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
-	}
-
-	if _, err := os.Stat("yarn.lock"); err == nil {
+	case pkgConfig.HasYarnLock:
 		return PackageManager{Command: "yarn", LockFile: "yarn.lock"}
-	}
-
-	if _, err := os.Stat("package-lock.json"); err == nil {
+	case pkgConfig.HasPackageLock:
 		return PackageManager{Command: "npm", LockFile: "package-lock.json"}
+	default:
+		return PackageManager{Command: "npm", LockFile: ""}
 	}
-
-	// DEFAULT TO NPM WITH NO LOCK FILE.
-	return PackageManager{Command: "npm", LockFile: ""}
 }
 
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
-func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// READ package.json TO EXTRACT DEPENDENCIES.
-	_, requiredDeps, found := utils.ReadPackageJSON()
+	packageConfig := config.LoadPackageConfig()
 
-	// DETERMINE WHICH PACKAGE MANAGER TO USE.
-	pm := DeterminePackageManager()
+	// IF package.json, LOCK FILES OR node_modules ARE NOT FOUND, THEN SKIP.
+	if !packageConfig.HasJSON && !packageConfig.HasPackageLock && !packageConfig.HasYarnLock && !packageConfig.HasPnpmLock {
+		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
+			return nil, nil, nil
+		}
+	}
 
-	// HANDLE MISSING package.json.
-	if !found {
+	pm := DeterminePackageManager(packageConfig)
+
+	// HANDLE ERRORS FROM LOADING CONFIG.
+	if packageConfig.Error != nil {
+		errors = append(errors, fmt.Sprintf("Failed to load package configuration: %v", packageConfig.Error))
+		return errors, warnings, successes
+	}
+
+	if !packageConfig.HasJSON {
 		errors = append(errors, "package.json not found.")
 
 		if pm.LockFile != "" {
@@ -64,6 +73,53 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 		return errors, warnings, successes
 	}
 
+	// HANDLE ENGINES IN package.json.
+	enginesConfig := []struct {
+		Cmd     string
+		Name    string
+		Version string
+	}{
+		{"node", "Node", packageConfig.NodeVersion},
+		{"npm", "NPM", packageConfig.NPMVersion},
+		{"pnpm", "PNPM", packageConfig.PNPMVersion},
+		{"yarn", "Yarn", packageConfig.YarnVersion},
+	}
+
+	for _, engine := range enginesConfig {
+		if engine.Version == "" || (engine.Cmd != "node" && engine.Cmd != pm.Command) {
+			continue
+		}
+
+		validCmd := false
+
+		for _, validEngine := range enginesConfig {
+			if engine.Cmd == validEngine.Cmd {
+				validCmd = true
+				break
+			}
+		}
+
+		if !validCmd {
+			warnings = append(warnings, fmt.Sprintf("Skipping potentially unsafe command: '%s'", engine.Cmd))
+			continue
+		}
+
+		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output() //nolint:gosec
+
+		if err != nil {
+			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", engine.Cmd, err))
+			continue
+		}
+
+		installed := strings.TrimSpace(string(out))
+
+		if valid, msg := utils.ValidateVersion(installed, engine.Version); !valid {
+			warnings = append(warnings, fmt.Sprintf("%s version mismatch. %s", engine.Name, msg))
+		} else {
+			successes = append(successes, fmt.Sprintf("%s version meets the engines requirement (%s).", engine.Cmd, installed))
+		}
+	}
+
 	successes = append(successes, "package.json found.")
 
 	// GET ALL INSTALLED PACKAGES.
@@ -73,9 +129,11 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
 	}
 
+	packageDeps := append(packageConfig.Dependencies, packageConfig.DevDependencies...)
+
 	// CHECK REQUIRED PACKAGES.
-	for _, dep := range requiredDeps {
-		if isInstalled, exists := installedPackages[dep]; exists && isInstalled {
+	for _, dep := range packageDeps {
+		if installedPackages[dep] {
 			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
 		} else {
 			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm.Command, dep))
@@ -88,74 +146,67 @@ func (n NpmModule) CheckRequirements(ctx context.Context, params map[string]inte
 // getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
 func getInstalledPackages() (map[string]bool, error) {
 	installedPackages := make(map[string]bool)
+
+	// LOAD DEPENDENCIES FROM package.json
 	packageJSON, err := os.ReadFile("package.json")
+	if err != nil {
+		return nil, err
+	}
 
-	if err == nil {
-		var pkgData map[string]interface{}
+	var packageData struct {
+		Dependencies    map[string]string `json:"dependencies"`
+		DevDependencies map[string]string `json:"devDependencies"`
+	}
 
-		if err = json.Unmarshal(packageJSON, &pkgData); err == nil {
-			// GET ALL DEPENDENCIES AND DEV DEPENDENCIES.
-			allDeps := make(map[string]interface{})
+	if err := json.Unmarshal(packageJSON, &packageData); err != nil {
+		return nil, err
+	}
 
-			if deps, ok := pkgData["dependencies"].(map[string]interface{}); ok {
-				for name, version := range deps {
-					allDeps[name] = version
-				}
-			}
+	// GET ALL DECLARED DEPENDENCIES.
+	packageDeps := make(map[string]struct{})
 
-			if devDeps, ok := pkgData["devDependencies"].(map[string]interface{}); ok {
-				for name, version := range devDeps {
-					allDeps[name] = version
-				}
-			}
+	for name := range packageData.Dependencies {
+		packageDeps[name] = struct{}{}
+	}
 
-			// CHECK EACH DEPENDENCY IN NODE_MODULES.
-			for name := range allDeps {
-				var path string
+	for name := range packageData.DevDependencies {
+		packageDeps[name] = struct{}{}
+	}
 
-				if strings.HasPrefix(name, "@") {
-					// HANDLE SCOPED PACKAGES.
-					parts := strings.SplitN(name, "/", 2)
+	// CHECK IF EACH DEPENDENCY IS PRESENT IN node_modules.
+	for dep := range packageDeps {
+		path := filepath.Join("node_modules", filepath.FromSlash(dep))
 
-					if len(parts) == 2 {
-						path = filepath.Join("node_modules", parts[0], parts[1])
-					}
-				} else {
-					path = filepath.Join("node_modules", name)
-				}
-
-				if path != "" {
-					if _, err := os.Stat(path); err == nil {
-						installedPackages[name] = true
-					}
-				}
-			}
+		if _, err := os.Stat(path); err == nil {
+			installedPackages[dep] = true
 		}
 	}
 
-	// IF WE COULDN'T READ package.json, TRY TO SCAN NODE_MODULES DIRECTLY
+	// FALLBACK: SCAN node_modules DIRECTLY IF NO DEPENDENCIES ARE FOUND ABOVE.
 	if len(installedPackages) == 0 {
 		entries, err := os.ReadDir("node_modules")
 
-		if err == nil {
-			for _, entry := range entries {
-				if entry.IsDir() {
-					name := entry.Name()
+		if err != nil {
+			return nil, err
+		}
 
-					// HANDLE @scope DIRECTORIES
-					if strings.HasPrefix(name, "@") {
-						scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
+		for _, entry := range entries {
+			if entry.IsDir() {
+				name := entry.Name()
 
-						if err == nil {
-							for _, scopedEntry := range scopedEntries {
-								if scopedEntry.IsDir() {
-									installedPackages[name+"/"+scopedEntry.Name()] = true
-								}
+				if strings.HasPrefix(name, "@") {
+					scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
+
+					if err == nil {
+						for _, scopedEntry := range scopedEntries {
+							if scopedEntry.IsDir() {
+								packageName := name + "/" + scopedEntry.Name()
+								installedPackages[packageName] = true
 							}
 						}
-					} else {
-						installedPackages[name] = true
 					}
+				} else {
+					installedPackages[name] = true
 				}
 			}
 		}

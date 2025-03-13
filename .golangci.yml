@@ -1,0 +1,36 @@
+run:
+  timeout: 5m  # MAXIMUM RUN TIME FOR LINTING.
+  tests: true  # INCLUDE TEST FILES IN THE ANALYSIS.
+
+linters:
+  enable:
+    - cyclop         # FUNCTION COMPLEXITY ANALYSIS.
+    - dupl           # IDENTIFY CODE DUPLICATIONS.
+    - errcheck       # CHECK FOR UNHANDLED ERRORS.
+    - gofmt          # ENSURE PROPER FORMATTING.
+    - gosec          # IDENTIFY SECURITY VULNERABILITIES.
+    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
+    - govet          # REPORT SUSPICIOUS CONSTRUCTS.
+    - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
+    - misspell       # DETECT COMMONLY MISSPELLED WORDS.
+    - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
+    - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
+    - revive         # FAST, CONFIGURABLE LINTER.
+    - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
+    - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
+    - unparam        # FIND UNUSED FUNCTION PARAMETERS.
+    - unused         # FIND UNUSED VARIABLES/CONSTANTS.
+
+linters-settings:
+  cyclop:
+    max-complexity: 25
+  misspell:
+    locale: US
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  print-issued-lines: true
+

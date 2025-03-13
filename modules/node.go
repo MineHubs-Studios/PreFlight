@@ -1,6 +1,7 @@
 package modules
 
 import (
+	"PreFlight/config"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -14,30 +15,44 @@ func (n NodeModule) Name() string {
 	return "Node"
 }
 
-func (n NodeModule) CheckRequirements(ctx context.Context, params map[string]interface{}) (errors []string, warnings []string, successes []string) {
+func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
-	// CHECK IF Node.js IS INSTALLED AND GET THE VERSION.
 	nodeVersion, err := getNodeVersion(ctx)
 
+	// IF node.js IS NOT INSTALLED, THEN SKIP.
 	if err != nil {
-		errors = append(errors, "Node.js is not installed. Please install Node.js to use NPM.")
-		return errors, warnings, successes
+		return nil, nil, nil
 	}
 
 	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
 
-	// CHECK IF A SPECIFIC Node.js VERSION IS REQUIRED.
-	requiredVersion, _, found := utils.ReadPackageJSON()
+	packageConfig := config.LoadPackageConfig()
 
-	if found && requiredVersion != "" {
-		if isValid, feedback := utils.ValidateVersion(nodeVersion, requiredVersion); isValid {
+	if packageConfig.Error != nil {
+		warnings = append(warnings, packageConfig.Error.Error())
+		return errors, warnings, successes
+	}
+
+	if packageConfig.NodeVersion != "" {
+		isValid, feedback := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
+
+		if isValid {
 			successes = append(successes, feedback)
 		} else {
 			errors = append(errors, feedback)
+		}
+	}
+
+	// CHECK FOR EOL NODE VERSIONS.
+	eolVersions := []string{"10.", "12.", "14.", "15.", "16.", "17.", "18."}
+
+	for _, eolVersion := range eolVersions {
+		if strings.HasPrefix(nodeVersion, "v"+eolVersion) {
+			warnings = append(warnings, fmt.Sprintf("Detected Node.js version %s is End-of-Life (EOL). Consider upgrading!", nodeVersion))
 		}
 	}
 
