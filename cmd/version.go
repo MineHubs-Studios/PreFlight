@@ -16,7 +16,7 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Shows PreFlight version information",
 	Long:  `Shows detailed information about the PreFlight version including version number and build date.`,
-	Run: func(_ *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		ow := utils.NewOutputWriter()
 
 		// GET VERSION DATA.

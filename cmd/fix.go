@@ -11,7 +11,7 @@ var forceFix bool
 var fixCmd = &cobra.Command{
 	Use:   "fix",
 	Short: "Fix missing dependencies (Composer & npm)",
-	Run: func(_ *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, _ []string) {
 		ctx := context.Background()
 		core.FixDependencies(ctx, forceFix)
 	},
