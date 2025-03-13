@@ -1,0 +1,42 @@
+run:
+  timeout: 5m  # MAXIMUM RUN TIME FOR LINTING.
+  tests: true  # INCLUDE TEST FILES IN THE ANALYSIS.
+
+linters:
+  enable:
+    - errcheck       # CHECK FOR UNHANDED ERRORS.
+    - gofmt          # ENSURE PROPER FORMATTING.
+    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
+    - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
+    - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
+    - unused         # FIND UNUSED VARIABLES/CONSTANTS.
+    - govet          # REPORT SUSPICIOUS CONSTRUCTS.
+    - gocyclo        # CALCULATE CYCLOMATIC COMPLEXITIES.
+    - gosec          # IDENTIFY SECURITY VULNERABILITIES.
+    - misspell       # DETECT COMMONLY MISSPELLED WORDS.
+    - revive         # FAST, CONFIGURABLE LINTER.
+    - dupl           # IDENTIFY CODE DUPLICATIONS.
+    - unparam        # FIND UNUSED FUNCTION PARAMETER.
+    - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
+    - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE ALLOCATED.
+    - scopelint      # FIND UNPINNED VARIABLES IN GO ROUTINES.
+    - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
+
+linters-settings:
+  gocyclo:
+    min-complexity: 15  # REPORT FUNCTIONS WITH COMPLEXITY ABOVE THIS THRESHOLD.
+  gosec:
+    excludes:
+      - G104  # IGNORE ERRORS NOT CHECKED.
+  misspell:
+    locale: US
+  revive:
+    ignore-generated-header: true  # SKIP LINTING FOR GENERATED FILES.
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+output:
+  print-issued-lines: true
+
