@@ -22,6 +22,8 @@ linters:
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
 
 linters-settings:
+  cyclop:
+    max-complexity: 20
   misspell:
     locale: US
 
