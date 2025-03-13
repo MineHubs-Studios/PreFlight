@@ -18,7 +18,7 @@ var (
 var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Checks if all required dependencies are installed",
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		// REGISTER ALL AVAILABLE MODULES.
 		availableModules := map[string]core.Module{
 			"php":      modules.PhpModule{},

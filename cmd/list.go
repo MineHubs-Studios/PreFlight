@@ -20,7 +20,7 @@ var listCmd = &cobra.Command{
 Multiple package managers can be specified except that npm and pnpm cannot be used simultaneously.`,
 	Example: "preflight list --pm composer,npm",
 	Aliases: []string{"dependencies", "deps"},
-	Run: func(cmd *cobra.Command, args []string) {
+	Run: func(_ *cobra.Command, args []string) {
 		var packageManagers []string
 
 		if packageManagersList != "" {
