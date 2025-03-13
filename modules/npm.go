@@ -104,7 +104,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			continue
 		}
 
-		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output()
+		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output() //nolint:gosec
 
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", engine.Cmd, err))
