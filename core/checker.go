@@ -39,7 +39,7 @@ func RunChecks(ctx context.Context) int {
 	for _, module := range modules {
 		select {
 		case <-ctx.Done():
-			if !ow.Println("\nChecks cancelled...") {
+			if !ow.Println("\nChecks canceled...") {
 				return 0
 			}
 			return 1
@@ -227,8 +227,8 @@ func finalMessage(results []CheckResult) int {
 	currentTime := time.Now().Format("02-01-2006 15:04:05")
 
 	fmt.Println(Bold + Blue + "\n╭────────────────────────────────────────────────────────────────╮" + Reset)
-	fmt.Printf(Bold + Blue + "│ " + statusColor + statusIcon + " Status: " + statusText + Reset + "\n")
-	fmt.Printf(Bold + Blue + "│ " + Dim + Clock + " Ended: " + currentTime + Reset + "\n")
+	fmt.Println(Bold + Blue + "│ " + statusColor + statusIcon + " Status: " + statusText + Reset)
+	fmt.Println(Bold + Blue + "│ " + Dim + Clock + " Ended: " + currentTime + Reset)
 	fmt.Println(Bold + Blue + "╰────────────────────────────────────────────────────────────────╯" + Reset)
 
 	return exitCode
