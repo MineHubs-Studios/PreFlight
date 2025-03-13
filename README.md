@@ -2,8 +2,7 @@
 
 A CLI tool to streamline project setup and ensure all dependencies are in check.
 
-> ⚠️ **Disclaimer:** PreFlight is currently in beta development, meaning that features, functionality, and stability are subject to change frequently.  
-> This project is highly experimental, and users should expect regular updates, modifications, and potential disruptions.
+> ⚠️ **Disclaimer:** PreFlight is currently in beta development, meaning that features, functionality, and stability are subject to change frequently. This project is highly experimental, and users should expect regular updates, modifications, and potential disruptions.
 >
 > We appreciate any **feedback or bug reports** to help improve the project.
 
@@ -11,7 +10,8 @@ A CLI tool to streamline project setup and ensure all dependencies are in check.
 
 ## 📌 Overview
 
-PreFlight is a powerful command-line tool designed to **validate, check, and fix** your project's environment and dependencies before starting development.  
+PreFlight is a powerful command-line tool designed to **validate, check, and fix** your project's environment and dependencies before starting development.
+
 It helps developers ensure that **all required tools and configurations** are set up correctly before running a project.
 
 ---
