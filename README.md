@@ -12,13 +12,47 @@ The project is highly experimental, and users should expect frequent updates, mo
 
 PreFlight is a powerful command-line tool designed to validate your project's environment and dependencies before takeoff. It helps developers ensure that all necessary dependencies, tools, and configurations are properly set up before running a project.
 
-## Features
+## ✨ Features
 
-- ✅ Dependency version validation
-- 🔍 Package manager detection (npm, composer)
-- 📦 Lock file verification
-- 🛠️ Environment setup checking
-- 💻 Development tool validation
+### ✅ **Core Functionality**
+#### 🔍 Check Command (`preflight check`)
+- Ensures your system matches the project's expected setup.
+- Supports **Go, PHP, Composer, Node.js, npm, pnpm, and Yarn**.
+- **EOL (End of Life) Detection** for PHP and Node.js versions.
+- Configurable **timeout** (`--timeout=<seconds>`) for checks.
+- Supports filtering by package manager using `--pm=composer,php,node`.
+
+#### 🔧 Fix Command (`preflight fix`)
+- Automatically installs missing dependencies.
+- Supports **Composer (PHP) and package managers (npm, pnpm, Yarn)**.
+- **Force reinstall** dependencies with `--force`.
+
+#### 📋 List Command (`preflight list`)
+- Displays all installed dependencies for:
+	- **Composer (PHP)**
+	- **npm, pnpm, Yarn (JavaScript)**
+	- **Go Modules**
+- Supports filtering by package manager using `--pm=node,composer`.
+
+---
+
+### 🔄 **Dependency Management**
+- **Detects missing dependencies** and suggests fixes.
+- **Ensures correct versions** of required tools and libraries.
+- **Verifies lock files** (`composer.lock`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`).
+
+---
+
+### ⚙️ **Customization & Flags**
+| Flag | Description |
+|------|------------|
+| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). |
+| `--force` | Force reinstall dependencies (for `fix` command). |
+| `--timeout=<seconds>` | Set timeout for dependency checks. |
+
+---
+
+PreFlight ensures **a smooth and error-free setup** by automatically checking and fixing dependencies. 🚀
 
 ## Requirements
 
