@@ -27,7 +27,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 		return nil, nil, nil
 	}
 
-	composerVersion, err := getComposerVersion(ctx)
+	composerVersion, err := GetComposerVersion(ctx)
 
 	if err != nil {
 		errors = append(errors, "Composer is not installed or not available in path.")
@@ -69,8 +69,8 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	return errors, warnings, successes
 }
 
-// getComposerVersion RETURNS THE INSTALLED Composer VERSION OR AN ERROR.
-func getComposerVersion(ctx context.Context) (string, error) {
+// GetComposerVersion RETURNS THE INSTALLED Composer VERSION OR AN ERROR.
+func GetComposerVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "composer", "--version")
 	output, err := cmd.Output()
 
