@@ -23,9 +23,6 @@ linters:
     - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
 
 linters-settings:
-  gosec:
-    excludes:
-      - G104  # IGNORE ERRORS NOT CHECKED.
   misspell:
     locale: US
   revive:
