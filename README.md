@@ -2,89 +2,88 @@
 
 A CLI tool to streamline project setup and ensure all dependencies are in check.
 
-> :warning: **Disclaimer:** PreFlight is currently in beta development,
-meaning that features, functionality, and stability are subject to change on a daily basis.
-The project is highly experimental, and users should expect frequent updates, modifications, and potential disruptions.
+> ⚠️ **Disclaimer:** PreFlight is currently in beta development, meaning that features, functionality, and stability are subject to change frequently.  
+> This project is highly experimental, and users should expect regular updates, modifications, and potential disruptions.
+>
+> We appreciate any **feedback or bug reports** to help improve the project.
 
->We appreciate any feedback or bug reports to help improve the project.
+---
 
-## Overview
+## 📌 Overview
 
-PreFlight is a powerful command-line tool designed to validate your project's environment and dependencies before takeoff. It helps developers ensure that all necessary dependencies, tools, and configurations are properly set up before running a project.
+PreFlight is a powerful command-line tool designed to **validate, check, and fix** your project's environment and dependencies before starting development.  
+It helps developers ensure that **all required tools and configurations** are set up correctly before running a project.
+
+---
 
 ## ✨ Features
 
-### ✅ **Core Functionality**
 #### 🔍 Check Command (`preflight check`)
 - Ensures your system matches the project's expected setup.
 - Supports **Go, PHP, Composer, Node.js, npm, pnpm, and Yarn**.
-- **EOL (End of Life) Detection** for PHP and Node.js versions.
-- Configurable **timeout** (`--timeout=<seconds>`) for checks.
-- Supports filtering by package manager using `--pm=composer,php,node`.
+- **EOL (End of Life) Detection** for **PHP and Node.js versions**.
+- Configurable **timeout** (`--timeout=<seconds>`) for dependency checks.
+- Supports **filtering by package manager** using `--pm=composer,php,node`.
 
 #### 🔧 Fix Command (`preflight fix`)
-- Automatically installs missing dependencies.
-- Supports **Composer (PHP) and package managers (npm, pnpm, Yarn)**.
-- **Force reinstall** dependencies with `--force`.
+- Automatically **installs missing dependencies**.
+- Supports **Composer (PHP)** and package managers (**npm, pnpm, Yarn**).
+- Allows **force reinstallation** of dependencies using `--force`.
 
 #### 📋 List Command (`preflight list`)
 - Displays all installed dependencies for:
 	- **Composer (PHP)**
 	- **npm, pnpm, Yarn (JavaScript)**
 	- **Go Modules**
-- Supports filtering by package manager using `--pm=node,composer`.
+- Supports **filtering by package manager** using `--pm=node,composer`.
 
 ---
 
 ### 🔄 **Dependency Management**
 - **Detects missing dependencies** and suggests fixes.
 - **Ensures correct versions** of required tools and libraries.
-- **Verifies lock files** (`composer.lock`, `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`).
+- **Verifies lock files**:
+	- `composer.lock`
+	- `package-lock.json`
+	- `pnpm-lock.yaml`
+	- `yarn.lock`
 
 ---
 
 ### ⚙️ **Customization & Flags**
-| Flag | Description |
-|------|------------|
-| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). |
-| `--force` | Force reinstall dependencies (for `fix` command). |
-| `--timeout=<seconds>` | Set timeout for dependency checks. |
+
+| Flag                | Description                                                   |
+|---------------------|---------------------------------------------------------------|
+| `--pm=<managers>`  | Filter by package manager (e.g., `--pm=php,composer,node`).   |
+| `--force`          | Force reinstall dependencies (for `fix` command).             |
+| `--timeout=<sec>`  | Set timeout for dependency checks (for `check` command).      |
 
 ---
 
-PreFlight ensures **a smooth and error-free setup** by automatically checking and fixing dependencies. 🚀
+## 📌 Requirements
 
-## Requirements
+- **Go 1.24** or higher
+- **Access to the project's root directory**
 
-- Go 1.24 or higher
-- Access to project's root directory
+## 🚀 Installation
 
-## Installation
-
-```bash
+```sh
 go install github.com/MineHubs-Studios/PreFlight@latest
 ```
 
-## Usage
+## 💡 Support
 
-Run PreFlight in your project directory:
+If you encounter any problems or have suggestions, please open an issue.
 
-```bash
-preflight check
-```
+## 🤝 Contributing
+We welcome contributions! Follow these steps:
 
-## Support
+1. **Fork** the repository
+2. **Create** your feature branch (`git checkout -b feature/amazing-feature`)
+3. **Commit** your changes (`git commit -m 'Add some amazing feature'`)
+4. **Push** to the branch (`git push origin feature/amazing-feature`)
+5. **Open a Pull Request**
 
-If you encounter any problems or have suggestions, please open an issue in the GitHub repository.
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
+## 📜 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
