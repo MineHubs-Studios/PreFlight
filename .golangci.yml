@@ -4,28 +4,26 @@ run:
 
 linters:
   enable:
-    - errcheck       # CHECK FOR UNHANDED ERRORS.
-    - gofmt          # ENSURE PROPER FORMATTING.
-    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
-    - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
-    - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
-    - unused         # FIND UNUSED VARIABLES/CONSTANTS.
-    - govet          # REPORT SUSPICIOUS CONSTRUCTS.
-    - gocyclo        # CALCULATE CYCLOMATIC COMPLEXITIES.
-    - gosec          # IDENTIFY SECURITY VULNERABILITIES.
-    - misspell       # DETECT COMMONLY MISSPELLED WORDS.
-    - revive         # FAST, CONFIGURABLE LINTER.
+    - cyclop         # FUNCTION COMPLEXITY ANALYSIS.
     - dupl           # IDENTIFY CODE DUPLICATIONS.
-    - unparam        # FIND UNUSED FUNCTION PARAMETER.
+    - errcheck       # CHECK FOR UNHANDLED ERRORS.
+    - gofmt          # ENSURE PROPER FORMATTING.
+    - gosec          # IDENTIFY SECURITY VULNERABILITIES.
+    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
+    - govet          # REPORT SUSPICIOUS CONSTRUCTS.
+    - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
+    - misspell       # DETECT COMMONLY MISSPELLED WORDS.
     - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
-    - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE ALLOCATED.
+    - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
+    - revive         # FAST, CONFIGURABLE LINTER.
+    - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
     - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
+    - unparam        # FIND UNUSED FUNCTION PARAMETERS.
+    - unused         # FIND UNUSED VARIABLES/CONSTANTS.
 
 linters-settings:
   misspell:
     locale: US
-  revive:
-    ignore-generated-header: true  # SKIP LINTING FOR GENERATED FILES.
 
 issues:
   max-issues-per-linter: 0

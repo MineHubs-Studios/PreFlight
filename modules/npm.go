@@ -90,6 +90,20 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			continue
 		}
 
+		validCmd := false
+
+		for _, validEngine := range enginesConfig {
+			if engine.Cmd == validEngine.Cmd {
+				validCmd = true
+				break
+			}
+		}
+
+		if !validCmd {
+			warnings = append(warnings, fmt.Sprintf("Skipping potentially unsafe command: '%s'", engine.Cmd))
+			continue
+		}
+
 		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output()
 
 		if err != nil {

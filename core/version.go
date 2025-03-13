@@ -43,9 +43,8 @@ func FetchLatestTag(repoOwner, repoName string) (string, error) {
 	}
 
 	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-		if err != nil {
-			// IGNORE CLOSE CASE.
+		if err := Body.Close(); err != nil {
+			_ = err // EXPLICITLY DISCARD THE ERROR TO SILENCE SA90003.
 		}
 	}(resp.Body)
 

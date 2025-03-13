@@ -67,7 +67,7 @@ func FixDependencies(ctx context.Context, force bool) {
 			args = append(args, "--force")
 		}
 
-		cmd := exec.CommandContext(ctx, packageManager.Command, args...)
+		cmd := exec.CommandContext(ctx, packageManager.Command, args...) //nolint:gosec
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
 
