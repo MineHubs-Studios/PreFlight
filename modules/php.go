@@ -22,14 +22,14 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		return nil, nil, nil
 	}
 
-	phpVersion, err := getPhpVersion(ctx)
+	phpVersion, buildDate, vcVersion, err := getPhpVersion(ctx)
 
 	// IF PHP IS NOT INSTALLED, THEN SKIP.
 	if err != nil {
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s.", phpVersion))
+	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s (Built: %s, %s).", phpVersion, buildDate, vcVersion))
 
 	composerConfig := config.LoadComposerConfig()
 
@@ -107,28 +107,42 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 }
 
 // getPhpVersion RETURNS THE INSTALLED PHP VERSION OR AN ERROR.
-func getPhpVersion(ctx context.Context) (string, error) {
+func getPhpVersion(ctx context.Context) (phpVersion, buildDate, vcVersion string, err error) {
 	cmd := exec.CommandContext(ctx, "php", "--version")
 	output, err := cmd.Output()
 
 	if err != nil {
-		return "", fmt.Errorf("failed to run php --version: %w", err)
+		return "", "", "", fmt.Errorf("failed to run php --version: %w", err)
 	}
 
 	lines := strings.Split(string(output), "\n")
-
 	if len(lines) == 0 {
-		return "", fmt.Errorf("unexpected output from php --version")
+		return "", "", "", fmt.Errorf("unexpected output from php --version")
 	}
 
-	regex := regexp.MustCompile(`PHP (\d+\.\d+\.\d+)`)
-	matches := regex.FindStringSubmatch(lines[0])
+	// EXTRACT PHP VERSION.
+	versionRegex := regexp.MustCompile(`PHP (\d+\.\d+\.\d+)`)
+	versionMatches := versionRegex.FindStringSubmatch(lines[0])
 
-	if len(matches) < 2 {
-		return "", fmt.Errorf("could not parse PHP version from: %s", lines[0])
+	if len(versionMatches) < 2 {
+		return "", "", "", fmt.Errorf("could not parse PHP version from: %s", lines[0])
 	}
 
-	return matches[1], nil
+	phpVersion = versionMatches[1]
+
+	// EXTRACT BUILD DATE AND VC++ VERSION.
+	buildRegex := regexp.MustCompile(`\(built: ([^)]+)\) \((.*?)\)`)
+	buildMatches := buildRegex.FindStringSubmatch(lines[0])
+
+	if len(buildMatches) >= 3 {
+		buildDate = buildMatches[1]
+		vcVersion = buildMatches[2]
+	} else {
+		buildDate = "unknown"
+		vcVersion = "unknown"
+	}
+
+	return phpVersion, buildDate, vcVersion, nil
 }
 
 // getPhpExtensions RETURNS A MAP OF ALL INSTALLED PHP EXTENSIONS.
