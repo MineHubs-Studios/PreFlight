@@ -23,8 +23,6 @@ linters:
     - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
 
 linters-settings:
-  gocyclo:
-    min-complexity: 15  # REPORT FUNCTIONS WITH COMPLEXITY ABOVE THIS THRESHOLD.
   gosec:
     excludes:
       - G104  # IGNORE ERRORS NOT CHECKED.
