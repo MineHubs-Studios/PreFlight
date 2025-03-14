@@ -3,6 +3,7 @@ package cmd
 import (
 	"PreFlight/core"
 	"PreFlight/modules"
+	"PreFlight/utils"
 	"context"
 	"fmt"
 	"github.com/spf13/cobra"
@@ -48,7 +49,7 @@ var checkCmd = &cobra.Command{
 
 		// REGISTER REQUESTED MODULES.
 		if err := core.RegisterModule(nil, moduleNames...); err != nil {
-			fmt.Printf(core.Red+"Failed to register modules: %v\n", err)
+			fmt.Printf(utils.Red+"Failed to register modules: %v\n", err)
 			return
 		}
 

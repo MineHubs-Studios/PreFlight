@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"PreFlight/core"
+	"PreFlight/utils"
 	"fmt"
 	"github.com/spf13/cobra"
 	"strings"
@@ -37,8 +38,8 @@ Multiple package managers can be specified except that npm and pnpm cannot be us
 				// CHECK FOR NPM AND PNPM CONFLICT.
 				if pm == "npm" || pm == "pnpm" || pm == "yarn" {
 					if hasNodePM {
-						fmt.Printf(core.Red+"%sError: You can't use npm, pnpm and yarn at the same time.%s\n",
-							core.Red, core.Reset)
+						fmt.Printf(utils.Red+"%sError: You can't use npm, pnpm and yarn at the same time.%s\n",
+							utils.Red, utils.Reset)
 						return
 					}
 

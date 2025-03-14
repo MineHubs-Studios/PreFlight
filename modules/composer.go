@@ -2,6 +2,7 @@ package modules
 
 import (
 	"PreFlight/config"
+	"PreFlight/utils"
 	"context"
 	"fmt"
 	"os/exec"
@@ -54,7 +55,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 
 	for _, dep := range composerDeps {
 		if installed, version, err := getInstalledPackage(ctx, dep); !installed {
-			errorMsg := fmt.Sprintf("Composer package %s is missing. Run `composer require %s`.", dep, dep)
+			errorMsg := fmt.Sprintf("Missing package %s , Run `composer require %s`.", dep, dep)
 
 			if err != nil {
 				errorMsg += fmt.Sprintf(" Error: %v", err)
@@ -62,7 +63,8 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 
 			errors = append(errors, errorMsg)
 		} else {
-			successes = append(successes, fmt.Sprintf("Composer package %s (%s) is installed.", dep, version))
+			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
+				utils.Reset, dep, version))
 		}
 	}
 

@@ -84,21 +84,21 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		// CHECK REQUIRED PHP EXTENSIONS.
 		for _, ext := range composerConfig.PHPExtensions {
 			if _, exists := installedExtensions[ext]; !exists {
-				errors = append(errors, fmt.Sprintf("PHP extension %s is missing, please enable it.", ext))
+				errors = append(errors, fmt.Sprintf("Extension %s is missing, please enable it.", ext))
 				continue
 			}
 
-			successes = append(successes, fmt.Sprintf("PHP extension %s is installed.", ext))
+			successes = append(successes, fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext))
 
 			// CHECK FOR DEPRECATED EXTENSIONS.
 			if _, deprecated := deprecatedExtensions[ext]; deprecated {
-				warnings = append(warnings, fmt.Sprintf("PHP extension %s is deprecated, consider removing or replacing it.", ext))
+				warnings = append(warnings, fmt.Sprintf("Extension %s is deprecated, consider removing or replacing it.", ext))
 				continue
 			}
 
 			// CHECK FOR EXPERIMENTAL EXTENSIONS.
 			if _, experimental := experimentalExtensions[ext]; experimental {
-				warnings = append(warnings, fmt.Sprintf("PHP extension %s is experimental, use with caution.", ext))
+				warnings = append(warnings, fmt.Sprintf("Extension %s is experimental, use with caution.", ext))
 			}
 		}
 	}

@@ -14,15 +14,15 @@ import (
 func FixDependencies(ctx context.Context, force bool) {
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(Bold + Blue + "\n╭─────────────────────────────────────────╮" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "\n╭─────────────────────────────────────────╮" + utils.Reset) {
 		return
 	}
 
-	if !ow.Println(Bold + Blue + "│" + Cyan + Bold + "  🚀 Fixing dependencies  " + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 Fixing dependencies  " + utils.Reset) {
 		return
 	}
 
-	if !ow.Println(Bold + Blue + "╰─────────────────────────────────────────╯" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "╰─────────────────────────────────────────╯" + utils.Reset) {
 		return
 	}
 

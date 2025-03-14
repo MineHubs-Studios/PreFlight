@@ -142,15 +142,15 @@ func detectAvailablePackageManagers() []string {
 func PrintDependencies(result DependencyResult) bool {
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(Bold + Blue + "\n╭─────────────────────────────────────────╮" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "\n╭─────────────────────────────────────────╮" + utils.Reset) {
 		return false
 	}
 
-	if !ow.Println(Bold + Blue + "│" + Cyan + Bold + "  🚀 Scanning project for dependencies  " + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 Scanning project for dependencies  " + utils.Reset) {
 		return false
 	}
 
-	if !ow.Println(Bold + Blue + "╰─────────────────────────────────────────╯" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "╰─────────────────────────────────────────╯" + utils.Reset) {
 		return false
 	}
 
@@ -159,11 +159,11 @@ func PrintDependencies(result DependencyResult) bool {
 	}
 
 	if len(result.Dependencies) == 0 {
-		if !ow.Println(Bold + "📦 No Package Managers:" + Reset) {
+		if !ow.Println(utils.Bold + "📦 No Package Managers:" + utils.Reset) {
 			return false
 		}
 
-		if !ow.Println(Red + "  " + CrossMark + " No package managers detected in this project!" + Reset) {
+		if !ow.Println(utils.Red + "  " + utils.CrossMark + " No package managers detected in this project!" + utils.Reset) {
 			return false
 		}
 
@@ -185,18 +185,18 @@ func PrintDependencies(result DependencyResult) bool {
 		// CONVERT TO A TITLE CASE FOR NICE FORMATTING (npm -> NPM, composer -> Composer)
 		displayName := strings.ToUpper(pm[:1]) + pm[1:]
 
-		if !ow.Printf("%s%s Dependencies:%s\n", Bold, displayName, Reset) {
+		if !ow.Printf("%s%s Dependencies:%s\n", utils.Bold, displayName, utils.Reset) {
 			return false
 		}
 
 		if len(deps) > 0 {
 			for _, dep := range deps {
-				if !ow.Printf(Green+" "+CheckMark+" %s%s\n", dep, Reset) {
+				if !ow.Printf(utils.Green+" "+utils.CheckMark+" %s%s\n", dep, utils.Reset) {
 					return false
 				}
 			}
 		} else {
-			if !ow.Printf(Red+" "+CrossMark+" No %s dependencies found!%s\n", pm, Reset) {
+			if !ow.Printf(utils.Red+" "+utils.CrossMark+" No %s dependencies found!%s\n", pm, utils.Reset) {
 				return false
 			}
 		}

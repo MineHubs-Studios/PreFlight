@@ -137,10 +137,10 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	// CHECK REQUIRED PACKAGES.
 	for _, dep := range packageDeps {
 		if version, installed := installedPackages[dep]; installed {
-			successes = append(successes, fmt.Sprintf("NPM package %s (%s) is installed.",
-				dep, version))
+			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
+				utils.Reset, dep, version))
 		} else {
-			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.",
+			errors = append(errors, fmt.Sprintf("Missing package %s , Run `%s install %s`.",
 				dep, pm.Command, dep))
 		}
 	}
