@@ -116,7 +116,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		if valid, msg := utils.ValidateVersion(installed, engine.Version); !valid {
 			warnings = append(warnings, fmt.Sprintf("%s version mismatch. %s", engine.Name, msg))
 		} else {
-			// Ensure only one success message, prioritizing pnpm over npm and yarn
+			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING PNPM OVER NPM AND Yarn.
 			if len(successes) == 0 || engine.Cmd == "pnpm" || (engine.Cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
 				successes = []string{fmt.Sprintf("%s version meets the engines requirement (%s).", engine.Cmd, installed)}
 			}

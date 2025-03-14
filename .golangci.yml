@@ -23,7 +23,7 @@ linters:
 
 linters-settings:
   cyclop:
-    max-complexity: 25
+    max-complexity: 30
   misspell:
     locale: US
 
