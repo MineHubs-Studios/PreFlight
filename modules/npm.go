@@ -136,10 +136,12 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 	// CHECK REQUIRED PACKAGES.
 	for _, dep := range packageDeps {
-		if installedPackages[dep] {
-			successes = append(successes, fmt.Sprintf("NPM package %s is installed.", dep))
+		if version, installed := installedPackages[dep]; installed {
+			successes = append(successes, fmt.Sprintf("NPM package %s (%s) is installed.",
+				dep, version))
 		} else {
-			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.", dep, pm.Command, dep))
+			errors = append(errors, fmt.Sprintf("NPM package %s is missing. Run `%s install %s`.",
+				dep, pm.Command, dep))
 		}
 	}
 
@@ -147,11 +149,12 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 }
 
 // getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
-func getInstalledPackages() (map[string]bool, error) {
-	installedPackages := make(map[string]bool)
+func getInstalledPackages() (map[string]string, error) {
+	installedPackages := make(map[string]string)
 
-	// LOAD DEPENDENCIES FROM package.json
+	// LOAD DEPENDENCIES FROM package.json.
 	packageJSON, err := os.ReadFile("package.json")
+
 	if err != nil {
 		return nil, err
 	}
@@ -166,22 +169,35 @@ func getInstalledPackages() (map[string]bool, error) {
 	}
 
 	// GET ALL DECLARED DEPENDENCIES.
-	packageDeps := make(map[string]struct{})
+	packageDeps := make(map[string]string)
 
-	for name := range packageData.Dependencies {
-		packageDeps[name] = struct{}{}
+	for name, version := range packageData.Dependencies {
+		packageDeps[name] = version
 	}
 
-	for name := range packageData.DevDependencies {
-		packageDeps[name] = struct{}{}
+	for name, version := range packageData.DevDependencies {
+		packageDeps[name] = version
 	}
 
 	// CHECK IF EACH DEPENDENCY IS PRESENT IN node_modules.
-	for dep := range packageDeps {
-		path := filepath.Join("node_modules", filepath.FromSlash(dep))
+	for dep, version := range packageDeps {
+		path := filepath.Join("node_modules", filepath.FromSlash(dep), "package.json")
 
 		if _, err := os.Stat(path); err == nil {
-			installedPackages[dep] = true
+			pkgInfo, err := os.ReadFile(path)
+
+			if err == nil {
+				var pkgData struct {
+					Version string `json:"version"`
+				}
+
+				if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
+					installedPackages[dep] = pkgData.Version
+					continue
+				}
+			}
+
+			installedPackages[dep] = version
 		}
 	}
 
@@ -204,12 +220,41 @@ func getInstalledPackages() (map[string]bool, error) {
 						for _, scopedEntry := range scopedEntries {
 							if scopedEntry.IsDir() {
 								packageName := name + "/" + scopedEntry.Name()
-								installedPackages[packageName] = true
+								pkgPath := filepath.Join("node_modules", name, scopedEntry.Name(), "package.json")
+								pkgInfo, err := os.ReadFile(pkgPath)
+
+								if err == nil {
+									var pkgData struct {
+										Version string `json:"version"`
+									}
+
+									if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
+										installedPackages[packageName] = pkgData.Version
+										continue
+									}
+								}
+
+								installedPackages[packageName] = "version unknown"
 							}
 						}
 					}
 				} else {
-					installedPackages[name] = true
+					pkgPath := filepath.Join("node_modules", name, "package.json")
+
+					pkgInfo, err := os.ReadFile(pkgPath)
+
+					if err == nil {
+						var pkgData struct {
+							Version string `json:"version"`
+						}
+
+						if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
+							installedPackages[name] = pkgData.Version
+							continue
+						}
+					}
+
+					installedPackages[name] = "version unknown"
 				}
 			}
 		}
