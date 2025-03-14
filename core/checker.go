@@ -187,6 +187,7 @@ func printMessages(ow *utils.OutputWriter, messages []string, color string, symb
 			strings.Contains(msgLower, "installed package") ||
 			strings.Contains(msgLower, "missing package") ||
 			strings.Contains(msgLower, "installed extension") ||
+			strings.Contains(msgLower, "missing extension") ||
 			strings.Contains(msgLower, "go module")) {
 			indentLevel = 6
 		} else if !strings.Contains(msg, "Scope:") {

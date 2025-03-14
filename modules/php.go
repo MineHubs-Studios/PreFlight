@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -73,6 +74,10 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			return errors, warnings, successes
 		}
 
+		pdoExtensions := map[string][]string{
+			"pdo": {"pdo_sqlite", "pdo_mysql", "pdo_pgsql", "pdo_oci", "pdo_odbc", "pdo_firebird"},
+		}
+
 		deprecatedExtensions := map[string]struct{}{
 			"imap": {}, "mysql": {}, "recode": {}, "statistics": {}, "wddx": {}, "xml-rpc": {},
 		}
@@ -83,23 +88,45 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 		// CHECK REQUIRED PHP EXTENSIONS.
 		for _, ext := range composerConfig.PHPExtensions {
-			if _, exists := installedExtensions[ext]; !exists {
-				errors = append(errors, fmt.Sprintf("Extension %s is missing, please enable it.", ext))
+			if _, exists := installedExtensions[ext]; exists {
+				successes = append(successes, fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext))
+
+				// CHECK FOR DEPRECATED EXTENSIONS.
+				if _, deprecated := deprecatedExtensions[ext]; deprecated {
+					warnings = append(warnings, fmt.Sprintf("Installed extension %s is deprecated, consider removing or replacing it.", ext))
+					continue
+				}
+
+				// CHECK FOR EXPERIMENTAL EXTENSIONS.
+				if _, experimental := experimentalExtensions[ext]; experimental {
+					warnings = append(warnings, fmt.Sprintf("Installed extension %s is experimental, use with caution.", ext))
+				}
+
 				continue
 			}
 
-			successes = append(successes, fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext))
+			// FOR PHP 8.4+, CHECK IF THIS IS A SPLIT EXTENSION.
+			isPHP84OrHigher := checkPHP84OrHigher(phpVersion)
 
-			// CHECK FOR DEPRECATED EXTENSIONS.
-			if _, deprecated := deprecatedExtensions[ext]; deprecated {
-				warnings = append(warnings, fmt.Sprintf("Extension %s is deprecated, consider removing or replacing it.", ext))
-				continue
+			if isPHP84OrHigher {
+				if alternatives, isSplitExt := pdoExtensions[ext]; isSplitExt {
+					foundAlternative := false
+
+					for _, altExt := range alternatives {
+						if _, exists := installedExtensions[altExt]; exists {
+							foundAlternative = true
+							successes = append(successes, fmt.Sprintf("Installed extension %s%s (%s).", utils.Reset, ext, altExt))
+							break
+						}
+					}
+
+					if foundAlternative {
+						continue
+					}
+				}
 			}
 
-			// CHECK FOR EXPERIMENTAL EXTENSIONS.
-			if _, experimental := experimentalExtensions[ext]; experimental {
-				warnings = append(warnings, fmt.Sprintf("Extension %s is experimental, use with caution.", ext))
-			}
+			errors = append(errors, fmt.Sprintf("Missing extension %s , please enable it.", ext))
 		}
 	}
 
@@ -116,6 +143,7 @@ func getPhpVersion(ctx context.Context) (phpVersion, buildDate, vcVersion string
 	}
 
 	lines := strings.Split(string(output), "\n")
+
 	if len(lines) == 0 {
 		return "", "", "", fmt.Errorf("unexpected output from php --version")
 	}
@@ -163,4 +191,27 @@ func getPhpExtensions(ctx context.Context) (map[string]struct{}, error) {
 	}
 
 	return PHPExtensions, nil
+}
+
+// checkPHP84OrHigher CHECKS IF THE PHP VERSION IS 8.4 OR HIGHER.
+func checkPHP84OrHigher(phpVersion string) bool {
+	parts := strings.Split(phpVersion, ".")
+
+	if len(parts) < 2 {
+		return false
+	}
+
+	major, err := strconv.Atoi(parts[0])
+
+	if err != nil {
+		return false
+	}
+
+	minor, err := strconv.Atoi(parts[1])
+
+	if err != nil {
+		return false
+	}
+
+	return major > 8 || (major == 8 && minor >= 4)
 }
