@@ -42,18 +42,16 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		isValid, _ := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
 
 		if isValid {
+			eolVersions := []string{"7.4", "8.0"}
 			successes = append(successes, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
+
+			for _, eolVersion := range eolVersions {
+				if strings.HasPrefix(phpVersion, eolVersion+".") {
+					warnings = append(warnings, fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, phpVersion))
+				}
+			}
 		} else {
 			errors = append(errors, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
-		}
-	}
-
-	// CHECK FOR EOL PHP VERSIONS.
-	eolVersions := []string{"7.4", "8.0"}
-
-	for _, eolVersion := range eolVersions {
-		if strings.HasPrefix(phpVersion, eolVersion+".") {
-			warnings = append(warnings, fmt.Sprintf("Detected PHP version %s is End-of-Life (EOL). Consider upgrading!", phpVersion))
 		}
 	}
 
@@ -85,13 +83,13 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 				// CHECK FOR DEPRECATED EXTENSIONS.
 				if _, deprecated := deprecatedExtensions[ext]; deprecated {
-					warnings = append(warnings, fmt.Sprintf("Installed extension %s is deprecated, consider removing or replacing it.", ext))
+					warnings = append(warnings, fmt.Sprintf("Installed extension %s%s %sis deprecated, consider removing or replacing it.", utils.Reset, ext, utils.Yellow))
 					continue
 				}
 
 				// CHECK FOR EXPERIMENTAL EXTENSIONS.
 				if _, experimental := experimentalExtensions[ext]; experimental {
-					warnings = append(warnings, fmt.Sprintf("Installed extension %s is experimental, use with caution.", ext))
+					warnings = append(warnings, fmt.Sprintf("Installed extension %s%s %sis experimental, use with caution.", utils.Reset, ext, utils.Yellow))
 				}
 
 				continue
@@ -118,7 +116,7 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 				}
 			}
 
-			errors = append(errors, fmt.Sprintf("Missing extension %s , please enable it.", ext))
+			errors = append(errors, fmt.Sprintf("Missing extension %s%s%s, please enable it.", utils.Reset, ext, utils.Red))
 		}
 	}
 

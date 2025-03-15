@@ -90,14 +90,14 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			continue
 		}
 
-		installed := strings.TrimSpace(string(out))
+		installedVersion := strings.TrimSpace(string(out))
 
-		if valid, msg := utils.ValidateVersion(installed, engine.Version); !valid {
-			warnings = append(warnings, fmt.Sprintf("%s version mismatch. %s", engine.Name, msg))
+		if valid, _ := utils.ValidateVersion(installedVersion, engine.Version); !valid {
+			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, engine.Name, installedVersion, engine.Version))
 		} else {
 			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING PNPM OVER NPM AND Yarn.
 			if len(successes) == 0 || engine.Cmd == "pnpm" || (engine.Cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
-				successes = []string{fmt.Sprintf("%s version meets the engines requirement (%s).", engine.Cmd, installed)}
+				successes = []string{fmt.Sprintf("Installed %s%s (%s ⟶ required %s).", utils.Reset, engine.Name, installedVersion, engine.Version)}
 			}
 		}
 	}
@@ -119,8 +119,8 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
 				utils.Reset, dep, version))
 		} else {
-			errors = append(errors, fmt.Sprintf("Missing package %s , Run `%s install %s`.",
-				dep, pm.Command, dep))
+			errors = append(errors, fmt.Sprintf("Missing package %s%s , Run `%s install %s`.",
+				utils.Reset, dep, pm.Command, dep))
 		}
 	}
 

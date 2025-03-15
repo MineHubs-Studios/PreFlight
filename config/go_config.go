@@ -8,12 +8,11 @@ import (
 )
 
 type GoConfig struct {
-	PackageManager    utils.PackageManager
-	GoVersion         string
-	RequiredGoVersion string
-	Modules           []string
-	HasMod            bool
-	Error             error
+	PackageManager utils.PackageManager
+	GoVersion      string
+	Modules        []string
+	HasMod         bool
+	Error          error
 }
 
 func LoadGoConfig() GoConfig {
@@ -44,7 +43,7 @@ func LoadGoConfig() GoConfig {
 		line = strings.TrimSpace(line)
 
 		if strings.HasPrefix(line, "go ") {
-			goConfig.RequiredGoVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
+			goConfig.GoVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
 		}
 
 		if strings.HasPrefix(line, "require (") {
