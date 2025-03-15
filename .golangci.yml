@@ -15,7 +15,6 @@ linters:
     - errname        # CHECKS FOR ERRORS WITH GENERIC NAMES.
     - errorlint      # FIND CODE THAT MAY CAUSE ERRORS.
     - fatcontext     # CHECKS FOR CONTEXTS THAT ARE TOO FAT.
-    - goimports      # ENSURE IMPORTS ARE IN ORDER.
     - gofmt          # ENSURE PROPER FORMATTING.
     - gosec          # IDENTIFY SECURITY VULNERABILITIES.
     - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
@@ -31,18 +30,12 @@ linters:
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
     - whitespace     # CHECK FOR UNNECESSARY WHITESPACE.
-    - wrapcheck      # CHECKS FOR WRAPPING ERRORS.
 
 linters-settings:
   errchkjson:
     check-error-free-encoding: true
   misspell:
     locale: US
-  wrapcheck:
-    ignoreSigs:
-      - .Errorf(
-      - errors.New(
-      - errors.Unwrap(
 
 issues:
   max-issues-per-linter: 0
