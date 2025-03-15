@@ -9,7 +9,7 @@ import (
 
 var (
 	// Version SPECIFY THE CURRENT VERSION OF PreFlight.
-	Version = "2.0.0-beta2"
+	Version = "2.0.0-beta4"
 )
 
 var versionCmd = &cobra.Command{

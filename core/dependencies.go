@@ -55,6 +55,7 @@ func GetAllDependencies() DependencyResult {
 
 	if goPM.LockFile != "" {
 		goConfig := config.LoadGoConfig()
+
 		if goConfig.Error == nil && len(goConfig.Modules) > 0 {
 			sort.Strings(goConfig.Modules)
 			result.Dependencies["go"] = goConfig.Modules
