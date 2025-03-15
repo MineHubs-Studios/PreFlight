@@ -66,9 +66,9 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	for _, mod := range goConfig.Modules {
 		if getInstalledModules(ctx, mod) {
-			successes = append(successes, fmt.Sprintf("Go module %s is installed.", mod))
+			successes = append(successes, fmt.Sprintf("Installed module %s%s", utils.Reset, mod))
 		} else {
-			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", mod, mod))
+			errors = append(errors, fmt.Sprintf("Missing module %s , Run 'go get %s'.", mod, mod))
 		}
 	}
 
