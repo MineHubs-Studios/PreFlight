@@ -31,14 +31,7 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	}
 
 	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s (Built: %s, %s).", phpVersion, buildDate, vcVersion))
-
 	composerConfig := config.LoadComposerConfig()
-
-	// IF composer.json IS NOT FOUND, THEN SKIP.
-	if !composerConfig.HasJSON {
-		warnings = append(warnings, "composer.json file not found.")
-		return errors, warnings, successes
-	}
 
 	if composerConfig.Error != nil {
 		errors = append(errors, fmt.Sprintf("Failed to read composer.json: %v", composerConfig.Error))

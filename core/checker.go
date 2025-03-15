@@ -183,8 +183,7 @@ func printMessages(ow *utils.OutputWriter, messages []string, color string, symb
 			isUnderVersionMatch = false
 		}
 
-		if isUnderVersionMatch && (strings.Contains(msgLower, "composer package") ||
-			strings.Contains(msgLower, "installed package") ||
+		if isUnderVersionMatch && (strings.Contains(msgLower, "installed package") ||
 			strings.Contains(msgLower, "missing package") ||
 			strings.Contains(msgLower, "installed extension") ||
 			strings.Contains(msgLower, "missing extension") ||

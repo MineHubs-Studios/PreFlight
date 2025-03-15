@@ -22,10 +22,22 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	}
 
 	composerConfig := config.LoadComposerConfig()
+	pm := composerConfig.PackageManager
 
 	// IF composer.json OR composer.lock IS NOT FOUND, THEN SKIP.
-	if !composerConfig.HasJSON && !composerConfig.HasLock {
+	if pm.LockFile == "" && !composerConfig.HasJSON {
 		return nil, nil, nil
+	}
+
+	// HANDLE composer.json MISSING BUT LOCK FILE EXISTS.
+	if !composerConfig.HasJSON {
+		warnings = append(warnings, "composer.json not found.")
+
+		if pm.LockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("composer.json not found, but %s exists. Ensure composer.json is included in your project.", pm.LockFile))
+		}
+
+		return errors, warnings, successes
 	}
 
 	composerVersion, err := GetComposerVersion(ctx)

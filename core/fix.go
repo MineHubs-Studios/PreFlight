@@ -69,7 +69,7 @@ func fixJSDependencies(ctx context.Context, force bool) {
 		return
 	}
 
-	packageManager := modules.DeterminePackageManager(packageConfig)
+	packageManager := utils.DetectPackageManager("package")
 
 	fmt.Printf("🛠 Detected package manager: %s. Running `%s install`...\n", packageManager.Command, packageManager.Command)
 

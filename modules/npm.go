@@ -18,25 +18,6 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
-type PackageManager struct {
-	Command  string // Command TO RUN (npm, pnpm, yarn)
-	LockFile string // ASSOCIATED LOCK FILE.
-}
-
-// DeterminePackageManager IDENTIFIES WHICH PACKAGE MANAGER TO USE.
-func DeterminePackageManager(pkgConfig config.PackageConfig) PackageManager {
-	switch {
-	case pkgConfig.HasPnpmLock:
-		return PackageManager{Command: "pnpm", LockFile: "pnpm-lock.yaml"}
-	case pkgConfig.HasYarnLock:
-		return PackageManager{Command: "yarn", LockFile: "yarn.lock"}
-	case pkgConfig.HasPackageLock:
-		return PackageManager{Command: "npm", LockFile: "package-lock.json"}
-	default:
-		return PackageManager{Command: "npm", LockFile: ""}
-	}
-}
-
 // CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
 func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
@@ -47,13 +28,19 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	packageConfig := config.LoadPackageConfig()
 
 	// IF package.json, LOCK FILES OR node_modules ARE NOT FOUND, THEN SKIP.
-	if !packageConfig.HasJSON && !packageConfig.HasPackageLock && !packageConfig.HasYarnLock && !packageConfig.HasPnpmLock {
+	/* if !packageConfig.HasJSON && !packageConfig.HasPackageLock && !packageConfig.HasYarnLock && !packageConfig.HasPnpmLock {
+		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
+			return nil, nil, nil
+		}
+	} */
+
+	if !packageConfig.HasJSON {
 		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
 			return nil, nil, nil
 		}
 	}
 
-	pm := DeterminePackageManager(packageConfig)
+	pm := packageConfig.PackageManager
 
 	// HANDLE ERRORS FROM LOADING CONFIG.
 	if packageConfig.Error != nil {
