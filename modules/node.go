@@ -28,8 +28,6 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
-
 	packageConfig := config.LoadPackageConfig()
 
 	if packageConfig.Error != nil {
@@ -38,12 +36,12 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 	}
 
 	if packageConfig.NodeVersion != "" {
-		isValid, feedback := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
+		isValid, _ := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
 
 		if isValid {
-			successes = append(successes, feedback)
+			successes = append(successes, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
 		} else {
-			errors = append(errors, feedback)
+			errors = append(errors, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
 		}
 	}
 

@@ -28,9 +28,6 @@ type PackageConfig struct {
 	Dependencies    []string
 	DevDependencies []string
 	HasJSON         bool
-	HasPackageLock  bool
-	HasYarnLock     bool
-	HasPnpmLock     bool
 	Error           error
 }
 

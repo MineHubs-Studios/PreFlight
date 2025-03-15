@@ -30,7 +30,6 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s (Built: %s, %s).", phpVersion, buildDate, vcVersion))
 	composerConfig := config.LoadComposerConfig()
 
 	if composerConfig.Error != nil {
@@ -40,12 +39,12 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 	// CHECK PHP VERSION AGAINST REQUIREMENT.
 	if composerConfig.PHPVersion != "" {
-		isValid, feedback := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
+		isValid, _ := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
 
-		if isValid && feedback != "" {
-			successes = append(successes, feedback)
-		} else if !isValid {
-			errors = append(errors, feedback)
+		if isValid {
+			successes = append(successes, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
+		} else {
+			errors = append(errors, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
 		}
 	}
 

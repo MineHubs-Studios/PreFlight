@@ -47,7 +47,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 		return errors, warnings, successes
 	}
 
-	successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
+	successes = append(successes, fmt.Sprintf("Installed %sComposer (%s).", utils.Reset, composerVersion))
 
 	if !composerConfig.HasJSON && composerConfig.HasLock {
 		warnings = append(warnings, "composer.lock exists without composer.json. Consider including composer.json.")

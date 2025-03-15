@@ -26,21 +26,13 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	}
 
 	packageConfig := config.LoadPackageConfig()
-
-	// IF package.json, LOCK FILES OR node_modules ARE NOT FOUND, THEN SKIP.
-	/* if !packageConfig.HasJSON && !packageConfig.HasPackageLock && !packageConfig.HasYarnLock && !packageConfig.HasPnpmLock {
-		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
-			return nil, nil, nil
-		}
-	} */
+	pm := packageConfig.PackageManager
 
 	if !packageConfig.HasJSON {
 		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
 			return nil, nil, nil
 		}
 	}
-
-	pm := packageConfig.PackageManager
 
 	// HANDLE ERRORS FROM LOADING CONFIG.
 	if packageConfig.Error != nil {

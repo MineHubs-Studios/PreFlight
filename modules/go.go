@@ -28,8 +28,6 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
-
 	goConfig := config.LoadGoConfig()
 
 	if !goConfig.HasMod {
@@ -44,12 +42,12 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 	successes = append(successes, "go.mod found.")
 
 	if goConfig.RequiredGoVersion != "" {
-		isValid, feedback := utils.ValidateVersion(goVersion, goConfig.RequiredGoVersion)
+		isValid, _ := utils.ValidateVersion(goVersion, goConfig.RequiredGoVersion)
 
-		if isValid && feedback != "" {
-			successes = append(successes, feedback)
-		} else if !isValid {
-			errors = append(errors, feedback)
+		if isValid {
+			successes = append(successes, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.RequiredGoVersion))
+		} else {
+			errors = append(errors, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.RequiredGoVersion))
 		}
 	} else {
 		warnings = append(warnings, "Go version requirement not specified in go.mod.")
