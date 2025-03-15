@@ -1,6 +1,7 @@
 package config
 
 import (
+	"PreFlight/utils"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -13,6 +14,7 @@ type ComposerJSON struct {
 }
 
 type ComposerConfig struct {
+	PackageManager  utils.PackageManager
 	PHPVersion      string
 	PHPExtensions   []string
 	Dependencies    []string
@@ -25,16 +27,11 @@ type ComposerConfig struct {
 // LoadComposerConfig PARSES composer.json, composer.lock, AND RETURNS ComposerConfig.
 func LoadComposerConfig() ComposerConfig {
 	composerConfig := ComposerConfig{}
+	composerConfig.PackageManager = utils.DetectPackageManager("composer")
 
 	if _, err := os.Stat("composer.json"); err == nil {
 		composerConfig.HasJSON = true
-	}
-
-	if _, err := os.Stat("composer.lock"); err == nil {
-		composerConfig.HasLock = true
-	}
-
-	if !composerConfig.HasJSON {
+	} else {
 		return composerConfig
 	}
 

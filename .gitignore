@@ -11,3 +11,4 @@
 # GO SPECIFIC.
 *.out
 go.work
+go.work.sum

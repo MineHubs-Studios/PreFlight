@@ -1,4 +1,4 @@
-package core
+package utils
 
 const (
 	Reset = "\033[0m"

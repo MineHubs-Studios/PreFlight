@@ -2,6 +2,7 @@ package modules
 
 import (
 	"PreFlight/config"
+	"PreFlight/utils"
 	"context"
 	"fmt"
 	"os/exec"
@@ -21,10 +22,22 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	}
 
 	composerConfig := config.LoadComposerConfig()
+	pm := composerConfig.PackageManager
 
 	// IF composer.json OR composer.lock IS NOT FOUND, THEN SKIP.
-	if !composerConfig.HasJSON && !composerConfig.HasLock {
+	if pm.LockFile == "" && !composerConfig.HasJSON {
 		return nil, nil, nil
+	}
+
+	// HANDLE composer.json MISSING BUT LOCK FILE EXISTS.
+	if !composerConfig.HasJSON {
+		warnings = append(warnings, "composer.json not found.")
+
+		if pm.LockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("composer.json not found, but %s exists. Ensure composer.json is included in your project.", pm.LockFile))
+		}
+
+		return errors, warnings, successes
 	}
 
 	composerVersion, err := GetComposerVersion(ctx)
@@ -34,7 +47,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 		return errors, warnings, successes
 	}
 
-	successes = append(successes, fmt.Sprintf("Composer is installed with version %s.", composerVersion))
+	successes = append(successes, fmt.Sprintf("Installed %sComposer (%s).", utils.Reset, composerVersion))
 
 	if !composerConfig.HasJSON && composerConfig.HasLock {
 		warnings = append(warnings, "composer.lock exists without composer.json. Consider including composer.json.")
@@ -53,8 +66,8 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	composerDeps := append(composerConfig.Dependencies, composerConfig.DevDependencies...)
 
 	for _, dep := range composerDeps {
-		if installed, err := getInstalledPackage(ctx, dep); !installed {
-			errorMsg := fmt.Sprintf("Composer package %s is missing. Run `composer require %s`.", dep, dep)
+		if installed, version, err := getInstalledPackage(ctx, dep); !installed {
+			errorMsg := fmt.Sprintf("Missing package %s , Run `composer require %s`.", dep, dep)
 
 			if err != nil {
 				errorMsg += fmt.Sprintf(" Error: %v", err)
@@ -62,7 +75,8 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 
 			errors = append(errors, errorMsg)
 		} else {
-			successes = append(successes, fmt.Sprintf("Composer package %s is installed.", dep))
+			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
+				utils.Reset, dep, version))
 		}
 	}
 
@@ -89,13 +103,37 @@ func GetComposerVersion(ctx context.Context) (string, error) {
 }
 
 // getInstalledPackage CHECK IF A SPECIFIC COMPOSER PACKAGE IS INSTALLED.
-func getInstalledPackage(ctx context.Context, packageName string) (bool, error) {
+func getInstalledPackage(ctx context.Context, packageName string) (bool, string, error) {
 	cmd := exec.CommandContext(ctx, "composer", "show", packageName)
-	err := cmd.Run()
+	output, err := cmd.Output()
 
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 
-	return true, nil
+	outputStr := string(output)
+	lines := strings.Split(outputStr, "\n")
+	version := ""
+
+	for _, line := range lines {
+		trimmedLine := strings.TrimSpace(line)
+
+		if strings.HasPrefix(trimmedLine, "versions :") || strings.HasPrefix(trimmedLine, "version :") {
+			parts := strings.SplitN(trimmedLine, ":", 2)
+
+			if len(parts) > 1 {
+				version = strings.TrimSpace(parts[1])
+
+				// REMOVE ASTERISK IF PRESENT.
+				version = strings.TrimPrefix(version, "* ")
+				break
+			}
+		}
+	}
+
+	if version == "" {
+		version = "version unknown"
+	}
+
+	return true, version, nil
 }

@@ -28,8 +28,6 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
-
 	goConfig := config.LoadGoConfig()
 
 	if !goConfig.HasMod {
@@ -43,32 +41,30 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	successes = append(successes, "go.mod found.")
 
-	if goConfig.RequiredGoVersion != "" {
-		isValid, feedback := utils.ValidateVersion(goVersion, goConfig.RequiredGoVersion)
+	if goConfig.GoVersion != "" {
+		isValid, _ := utils.ValidateVersion(goVersion, goConfig.GoVersion)
 
-		if isValid && feedback != "" {
-			successes = append(successes, feedback)
-		} else if !isValid {
-			errors = append(errors, feedback)
+		if isValid {
+			eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
+			successes = append(successes, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
+
+			for _, eolVersion := range eolVersions {
+				if strings.HasPrefix(goVersion, eolVersion) {
+					warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
+				}
+			}
+		} else {
+			errors = append(errors, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
 		}
 	} else {
 		warnings = append(warnings, "Go version requirement not specified in go.mod.")
 	}
 
-	// CHECK FOR EOL GO VERSIONS.
-	eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
-
-	for _, eolVersion := range eolVersions {
-		if strings.HasPrefix(goVersion, eolVersion) {
-			warnings = append(warnings, fmt.Sprintf("Detected Go version %s is End-of-Life (EOL). Consider upgrading!", goVersion))
-		}
-	}
-
 	for _, mod := range goConfig.Modules {
 		if getInstalledModules(ctx, mod) {
-			successes = append(successes, fmt.Sprintf("Go module %s is installed.", mod))
+			successes = append(successes, fmt.Sprintf("Installed module %s%s", utils.Reset, mod))
 		} else {
-			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", mod, mod))
+			errors = append(errors, fmt.Sprintf("Missing module %s , Run 'go get %s'.", mod, mod))
 		}
 	}
 
