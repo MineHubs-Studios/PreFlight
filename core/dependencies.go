@@ -51,14 +51,15 @@ func GetAllDependencies() DependencyResult {
 	}
 
 	// DETECT AND PROCESS GO MODULE DEPENDENCIES
-	/* goPM := utils.DetectPackageManager("go")
-	goPM.LockFile != "" {
+	goPM := utils.DetectPackageManager("go")
+
+	if goPM.LockFile != "" {
 		goConfig := config.LoadGoConfig()
 		if goConfig.Error == nil && len(goConfig.Modules) > 0 {
 			sort.Strings(goConfig.Modules)
 			result.Dependencies["go"] = goConfig.Modules
 		}
-	} */
+	}
 
 	return result
 }
