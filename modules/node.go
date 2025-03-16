@@ -24,7 +24,7 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 
 	nodeVersion, err := getNodeVersion(ctx)
 
-	// IF node.js IS NOT INSTALLED, THEN SKIP.
+	// SKIP MODULE IF Node.js IS NOT INSTALLED.
 	if err != nil {
 		return nil, nil, nil
 	}
