@@ -64,33 +64,27 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			return errors, warnings, successes
 		}
 
-		pdoExtensions := map[string][]string{
-			"pdo": {"pdo_sqlite", "pdo_mysql", "pdo_pgsql", "pdo_oci", "pdo_odbc", "pdo_firebird"},
-		}
-
-		deprecatedExtensions := map[string]struct{}{
-			"imap": {}, "mysql": {}, "recode": {}, "statistics": {}, "wddx": {}, "xml-rpc": {},
-		}
-
-		experimentalExtensions := map[string]struct{}{
-			"gmagick": {}, "imagemagick": {}, "mqseries": {}, "parle": {}, "rnp": {}, "svm": {}, "svn": {}, "ui": {}, "omq": {},
-		}
-
 		// CHECK REQUIRED PHP EXTENSIONS.
 		for _, ext := range composerConfig.PHPExtensions {
 			if _, exists := installedExtensions[ext]; exists {
-				successes = append(successes, fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext))
+				deprecatedExtensions := map[string]struct{}{
+					"imap": {}, "mysql": {}, "recode": {}, "statistics": {}, "wddx": {}, "xml-rpc": {},
+				}
 
-				// CHECK FOR DEPRECATED EXTENSIONS.
+				experimentalExtensions := map[string]struct{}{
+					"gmagick": {}, "imagemagick": {}, "mqseries": {}, "parle": {}, "rnp": {}, "svm": {}, "svn": {}, "ui": {}, "omq": {},
+				}
+
+				feedback := fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext)
+
+				// CHECK FOR DEPRECATED AND EXPERIMENTAL EXTENSIONS.
 				if _, deprecated := deprecatedExtensions[ext]; deprecated {
-					warnings = append(warnings, fmt.Sprintf("Installed extension %s%s %sis deprecated, consider removing or replacing it.", utils.Reset, ext, utils.Yellow))
-					continue
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ deprecated), Consider removing or replacing it.", utils.Reset, ext)
+				} else if _, experimental := experimentalExtensions[ext]; experimental {
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ experimental), Use with caution.", utils.Reset, ext)
 				}
 
-				// CHECK FOR EXPERIMENTAL EXTENSIONS.
-				if _, experimental := experimentalExtensions[ext]; experimental {
-					warnings = append(warnings, fmt.Sprintf("Installed extension %s%s %sis experimental, use with caution.", utils.Reset, ext, utils.Yellow))
-				}
+				successes = append(successes, feedback)
 
 				continue
 			}
@@ -99,6 +93,10 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			isPHP84OrHigher := checkPHP84OrHigher(phpVersion)
 
 			if isPHP84OrHigher {
+				pdoExtensions := map[string][]string{
+					"pdo": {"pdo_sqlite", "pdo_mysql", "pdo_pgsql", "pdo_oci", "pdo_odbc", "pdo_firebird"},
+				}
+
 				if alternatives, isSplitExt := pdoExtensions[ext]; isSplitExt {
 					foundAlternative := false
 
@@ -116,7 +114,7 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 				}
 			}
 
-			errors = append(errors, fmt.Sprintf("Missing extension %s%s%s, please enable it.", utils.Reset, ext, utils.Red))
+			errors = append(errors, fmt.Sprintf("Missing extension %s%s, Please enable it.", utils.Reset, ext))
 		}
 	}
 

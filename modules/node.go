@@ -44,7 +44,7 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 
 			for _, eolVersion := range eolVersions {
 				if strings.HasPrefix(nodeVersion, "v"+eolVersion) {
-					warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
+					warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), Consider upgrading!", utils.Reset, nodeVersion))
 				}
 			}
 		} else {
