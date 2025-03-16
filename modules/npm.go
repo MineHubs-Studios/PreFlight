@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 )
 
 type NpmModule struct{}
@@ -32,72 +33,46 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
 			return nil, nil, nil
 		}
-	}
 
-	// HANDLE ERRORS FROM LOADING CONFIG.
-	if packageConfig.Error != nil {
-		errors = append(errors, fmt.Sprintf("Failed to load package configuration: %v", packageConfig.Error))
-		return errors, warnings, successes
-	}
-
-	if !packageConfig.HasJSON {
 		errors = append(errors, "package.json not found.")
 
 		if pm.LockFile != "" {
 			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) are found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) were found.")
 		}
 
 		return errors, warnings, successes
 	}
 
 	// HANDLE ENGINES IN package.json.
-	enginesConfig := []struct {
-		Cmd     string
-		Name    string
-		Version string
-	}{
-		{"node", "Node", packageConfig.NodeVersion},
-		{"npm", "NPM", packageConfig.NPMVersion},
-		{"pnpm", "PNPM", packageConfig.PNPMVersion},
-		{"yarn", "Yarn", packageConfig.YarnVersion},
+	engines := map[string]string{
+		"node": packageConfig.NodeVersion,
+		"npm":  packageConfig.NPMVersion,
+		"pnpm": packageConfig.PNPMVersion,
+		"yarn": packageConfig.YarnVersion,
 	}
 
-	for _, engine := range enginesConfig {
-		if engine.Version == "" || (engine.Cmd != "node" && engine.Cmd != pm.Command) {
+	for cmd, requiredVersion := range engines {
+		if requiredVersion == "" || (cmd != "node" && cmd != pm.Command) {
 			continue
 		}
 
-		validCmd := false
-
-		for _, validEngine := range enginesConfig {
-			if engine.Cmd == validEngine.Cmd {
-				validCmd = true
-				break
-			}
-		}
-
-		if !validCmd {
-			warnings = append(warnings, fmt.Sprintf("Skipping potentially unsafe command: '%s'", engine.Cmd))
-			continue
-		}
-
-		out, err := exec.CommandContext(ctx, engine.Cmd, "--version").Output() //nolint:gosec
+		out, err := exec.CommandContext(ctx, cmd, "--version").Output() //nolint:gosec
 
 		if err != nil {
-			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", engine.Cmd, err))
+			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", cmd, err))
 			continue
 		}
 
 		installedVersion := strings.TrimSpace(string(out))
 
-		if valid, _ := utils.ValidateVersion(installedVersion, engine.Version); !valid {
-			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, engine.Name, installedVersion, engine.Version))
+		if valid, _ := utils.ValidateVersion(installedVersion, requiredVersion); !valid {
+			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion))
 		} else {
 			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING PNPM OVER NPM AND Yarn.
-			if len(successes) == 0 || engine.Cmd == "pnpm" || (engine.Cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
-				successes = []string{fmt.Sprintf("Installed %s%s (%s ⟶ required %s).", utils.Reset, engine.Name, installedVersion, engine.Version)}
+			if len(successes) == 0 || cmd == "pnpm" || (cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
+				successes = []string{fmt.Sprintf("Installed %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion)}
 			}
 		}
 	}
@@ -111,16 +86,11 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		warnings = append(warnings, fmt.Sprintf("Error getting installed packages: %v", err))
 	}
 
-	packageDeps := append(packageConfig.Dependencies, packageConfig.DevDependencies...)
-
-	// CHECK REQUIRED PACKAGES.
-	for _, dep := range packageDeps {
+	for _, dep := range append(packageConfig.Dependencies, packageConfig.DevDependencies...) {
 		if version, installed := installedPackages[dep]; installed {
-			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
-				utils.Reset, dep, version))
+			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).", utils.Reset, dep, version))
 		} else {
-			errors = append(errors, fmt.Sprintf("Missing package %s%s , Run `%s install %s`.",
-				utils.Reset, dep, pm.Command, dep))
+			errors = append(errors, fmt.Sprintf("Missing package %s%s, Run `%s install %s`.", utils.Reset, dep, pm.Command, dep))
 		}
 	}
 
@@ -131,109 +101,91 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 func getInstalledPackages() (map[string]string, error) {
 	installedPackages := make(map[string]string)
 
-	// LOAD DEPENDENCIES FROM package.json.
-	packageJSON, err := os.ReadFile("package.json")
+	packageConfig := config.LoadPackageConfig()
 
-	if err != nil {
-		return nil, err
+	if packageConfig.Error != nil {
+		return nil, packageConfig.Error
 	}
 
-	var packageData struct {
-		Dependencies    map[string]string `json:"dependencies"`
-		DevDependencies map[string]string `json:"devDependencies"`
+	// COMBINE DEPENDENCIES AND DEV DEPENDENCIES.
+	for _, dep := range packageConfig.Dependencies {
+		installedPackages[dep] = "unknown"
 	}
 
-	if err := json.Unmarshal(packageJSON, &packageData); err != nil {
-		return nil, err
+	for _, devDep := range packageConfig.DevDependencies {
+		installedPackages[devDep] = "unknown"
 	}
 
-	// GET ALL DECLARED DEPENDENCIES.
-	packageDeps := make(map[string]string)
+	var wg sync.WaitGroup
+	var mu sync.Mutex
 
-	for name, version := range packageData.Dependencies {
-		packageDeps[name] = version
-	}
+	for dep := range installedPackages {
+		wg.Add(1)
 
-	for name, version := range packageData.DevDependencies {
-		packageDeps[name] = version
-	}
+		go func(dep string) {
+			defer wg.Done()
+			path := filepath.Join("node_modules", dep, "package.json")
 
-	// CHECK IF EACH DEPENDENCY IS PRESENT IN node_modules.
-	for dep, version := range packageDeps {
-		path := filepath.Join("node_modules", filepath.FromSlash(dep), "package.json")
-
-		if _, err := os.Stat(path); err == nil {
-			pkgInfo, err := os.ReadFile(path)
-
-			if err == nil {
-				var pkgData struct {
+			if data, err := os.ReadFile(path); err == nil {
+				var packageInfo struct {
 					Version string `json:"version"`
 				}
 
-				if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
-					installedPackages[dep] = pkgData.Version
-					continue
+				if json.Unmarshal(data, &packageInfo) == nil && packageInfo.Version != "" {
+					mu.Lock()
+					installedPackages[dep] = packageInfo.Version
+					mu.Unlock()
 				}
 			}
-
-			installedPackages[dep] = version
-		}
+		}(dep)
 	}
 
-	// FALLBACK: SCAN node_modules DIRECTLY IF NO DEPENDENCIES ARE FOUND ABOVE.
+	wg.Wait()
+
+	// FALLBACK: SCAN node_modules IF NO INSTALLED PACKAGES FOUND.
 	if len(installedPackages) == 0 {
-		entries, err := os.ReadDir("node_modules")
+		if entries, err := os.ReadDir("node_modules"); err == nil {
+			for _, entry := range entries {
+				if entry.IsDir() {
+					name := entry.Name()
 
-		if err != nil {
-			return nil, err
-		}
+					// HANDLE SCOPED PACKAGES (@org/package).
+					if strings.HasPrefix(name, "@") {
+						if scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name)); err == nil {
+							for _, scopedEntry := range scopedEntries {
+								if scopedEntry.IsDir() {
+									packagePath := filepath.Join("node_modules", name, scopedEntry.Name(), "package.json")
 
-		for _, entry := range entries {
-			if entry.IsDir() {
-				name := entry.Name()
+									if data, err := os.ReadFile(packagePath); err == nil {
+										var packageInfo struct {
+											Version string `json:"version"`
+										}
 
-				if strings.HasPrefix(name, "@") {
-					scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name))
-
-					if err == nil {
-						for _, scopedEntry := range scopedEntries {
-							if scopedEntry.IsDir() {
-								packageName := name + "/" + scopedEntry.Name()
-								pkgPath := filepath.Join("node_modules", name, scopedEntry.Name(), "package.json")
-								pkgInfo, err := os.ReadFile(pkgPath)
-
-								if err == nil {
-									var pkgData struct {
-										Version string `json:"version"`
-									}
-
-									if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
-										installedPackages[packageName] = pkgData.Version
-										continue
+										if json.Unmarshal(data, &packageInfo) == nil && packageInfo.Version != "" {
+											installedPackages[name+"/"+scopedEntry.Name()] = packageInfo.Version
+										} else {
+											installedPackages[name+"/"+scopedEntry.Name()] = "version unknown"
+										}
 									}
 								}
+							}
+						}
+					} else {
+						// DEFAULT PACKAGE HANDLING.
+						packagePath := filepath.Join("node_modules", name, "package.json")
 
-								installedPackages[packageName] = "version unknown"
+						if data, err := os.ReadFile(packagePath); err == nil {
+							var packageInfo struct {
+								Version string `json:"version"`
+							}
+
+							if json.Unmarshal(data, &packageInfo) == nil && packageInfo.Version != "" {
+								installedPackages[name] = packageInfo.Version
+							} else {
+								installedPackages[name] = "version unknown"
 							}
 						}
 					}
-				} else {
-					pkgPath := filepath.Join("node_modules", name, "package.json")
-
-					pkgInfo, err := os.ReadFile(pkgPath)
-
-					if err == nil {
-						var pkgData struct {
-							Version string `json:"version"`
-						}
-
-						if err := json.Unmarshal(pkgInfo, &pkgData); err == nil && pkgData.Version != "" {
-							installedPackages[name] = pkgData.Version
-							continue
-						}
-					}
-
-					installedPackages[name] = "version unknown"
 				}
 			}
 		}
