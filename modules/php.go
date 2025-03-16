@@ -43,18 +43,23 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 		isValid, _ := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
 		eolVersions := []string{"7.4", "8.0"}
 
-		if isValid {
-			successes = append(successes, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
+		feedback := fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion)
+		isWarning := false
 
-			// Check for End-of-Life (EOL) PHP versions.
-			for _, eolVersion := range eolVersions {
-				if strings.HasPrefix(phpVersion, eolVersion+".") {
-					warnings = append(warnings, fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, phpVersion))
-					break
-				}
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(phpVersion, eolVersion+".") {
+				feedback = fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), Consider upgrading!", utils.Reset, phpVersion)
+				isWarning = true
+				break
 			}
-		} else {
+		}
+
+		if !isValid {
 			errors = append(errors, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
+			successes = append(successes, feedback)
 		}
 	}
 
@@ -77,15 +82,23 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 		for _, ext := range composerConfig.PHPExtensions {
 			if _, exists := installedExtensions[ext]; exists {
-				message := fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext)
+				feedback := fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext)
+				isWarning := false
 
 				if _, deprecated := deprecatedExtensions[ext]; deprecated {
-					message = fmt.Sprintf("Installed extension %s(%s ⟶ deprecated), Consider removing or replacing it.", utils.Reset, ext)
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ deprecated), Consider removing or replacing it.", utils.Reset, ext)
+					isWarning = true
 				} else if _, experimental := experimentalExtensions[ext]; experimental {
-					message = fmt.Sprintf("Installed extension %s(%s ⟶ experimental), Use with caution.", utils.Reset, ext)
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ experimental), Use with caution.", utils.Reset, ext)
+					isWarning = true
 				}
 
-				successes = append(successes, message)
+				if isWarning {
+					warnings = append(warnings, feedback)
+				} else {
+					successes = append(successes, feedback)
+				}
+
 				continue
 			}
 

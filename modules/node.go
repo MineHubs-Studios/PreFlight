@@ -41,19 +41,23 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 		isValid, _ := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
 		eolVersions := []string{"10", "12", "14", "15", "16", "17", "18"}
 
-		if isValid {
-			// TODO - ONLY SEND ONE OF THE MESSAGES BELOW.
-			successes = append(successes, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
+		feedback := fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion)
+		isWarning := false
 
-			// Check for End-of-Life (EOL) Node.js versions.
-			for _, eolVersion := range eolVersions {
-				if strings.HasPrefix(nodeVersion, "v"+eolVersion+".") {
-					warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
-					break
-				}
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(nodeVersion, "v"+eolVersion+".") {
+				warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
+				isWarning = true
+				break
 			}
-		} else {
+		}
+
+		if !isValid {
 			errors = append(errors, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
+			successes = append(successes, feedback)
 		}
 	}
 

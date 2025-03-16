@@ -15,9 +15,9 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
-// CheckRequirements verifies Go configurations and dependencies.
+// CheckRequirements VERIFIES Go CONFIGURATIONS AND DEPENDENCIES.
 func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
-	// Exit early if context is canceled.
+	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
@@ -47,17 +47,23 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 		isValid, _ := utils.ValidateVersion(goVersion, goConfig.GoVersion)
 		eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
 
-		if isValid {
-			successes = append(successes, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
+		feedback := fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion)
+		isWarning := false
 
-			for _, eolVersion := range eolVersions {
-				if strings.HasPrefix(goVersion, eolVersion+".") {
-					warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
-					break
-				}
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(goVersion, eolVersion+".") {
+				warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
+				isWarning = true
+				break
 			}
-		} else {
+		}
+
+		if !isValid {
 			errors = append(errors, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
+			successes = append(successes, feedback)
 		}
 	} else {
 		warnings = append(warnings, "Go version requirement not specified in go.mod.")
