@@ -4,9 +4,11 @@ import (
 	"PreFlight/config"
 	"PreFlight/utils"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 type ComposerModule struct{}
@@ -15,6 +17,7 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
+// CheckRequirements verifies Composer dependencies and configurations.
 func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
@@ -24,12 +27,10 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	composerConfig := config.LoadComposerConfig()
 	pm := composerConfig.PackageManager
 
-	// IF composer.json OR composer.lock IS NOT FOUND, THEN SKIP.
 	if pm.LockFile == "" && !composerConfig.HasJSON {
 		return nil, nil, nil
 	}
 
-	// HANDLE composer.json MISSING BUT LOCK FILE EXISTS.
 	if !composerConfig.HasJSON {
 		warnings = append(warnings, "composer.json not found.")
 
@@ -59,31 +60,21 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 		return errors, warnings, successes
 	}
 
-	if composerConfig.HasJSON {
-		successes = append(successes, "composer.json found.")
-	}
+	successes = append(successes, "composer.json found.")
+	installedDependencies := GetInstalledDependencies(ctx, composerConfig.Dependencies, composerConfig.DevDependencies)
 
-	composerDeps := append(composerConfig.Dependencies, composerConfig.DevDependencies...)
-
-	for _, dep := range composerDeps {
-		if installed, version, err := getInstalledPackage(ctx, dep); !installed {
-			errorMsg := fmt.Sprintf("Missing package %s , Run `composer require %s`.", dep, dep)
-
-			if err != nil {
-				errorMsg += fmt.Sprintf(" Error: %v", err)
-			}
-
-			errors = append(errors, errorMsg)
+	for _, dep := range append(composerConfig.Dependencies, composerConfig.DevDependencies...) {
+		if version, exists := installedDependencies[dep]; exists {
+			successes = append(successes, fmt.Sprintf("Installed dependency %s%s (%s).", utils.Reset, dep, version))
 		} else {
-			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).",
-				utils.Reset, dep, version))
+			errors = append(errors, fmt.Sprintf("Missing dependency %s%s, Run `composer require %s`.", utils.Reset, dep, dep))
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// GetComposerVersion RETURNS THE INSTALLED Composer VERSION OR AN ERROR.
+// GetComposerVersion RETRIEVES THE INSTALLED Composer VERSION.
 func GetComposerVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "composer", "--version")
 	output, err := cmd.Output()
@@ -92,48 +83,80 @@ func GetComposerVersion(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	version := strings.TrimSpace(string(output))
-	versionParts := strings.Split(version, " ")
+	parts := strings.Fields(strings.TrimSpace(string(output)))
 
-	if len(versionParts) >= 3 {
-		return versionParts[2], nil
+	if len(parts) >= 3 {
+		return parts[2], nil
 	}
 
-	return "", fmt.Errorf("unexpected composer version format: %s", version)
+	return "", fmt.Errorf("unexpected composer version format: %s", output)
 }
 
-// getInstalledPackage CHECK IF A SPECIFIC COMPOSER PACKAGE IS INSTALLED.
-func getInstalledPackage(ctx context.Context, packageName string) (bool, string, error) {
-	cmd := exec.CommandContext(ctx, "composer", "show", packageName)
+// GetInstalledDependencies RETRIEVES THE INSTALLED Composer DEPENDENCIES.
+func GetInstalledDependencies(ctx context.Context, dependencies, devDependencies []string) map[string]string {
+	installedDependencies := make(map[string]string)
+	allDeps := append(dependencies, devDependencies...)
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+
+	cmd := exec.CommandContext(ctx, "composer", "show", "--format=json")
 	output, err := cmd.Output()
 
-	if err != nil {
-		return false, "", err
-	}
+	if err == nil {
+		var data struct {
+			Dependencies []struct {
+				Name    string `json:"name"`
+				Version string `json:"version"`
+			} `json:"installed"`
+		}
 
-	outputStr := string(output)
-	lines := strings.Split(outputStr, "\n")
-	version := ""
-
-	for _, line := range lines {
-		trimmedLine := strings.TrimSpace(line)
-
-		if strings.HasPrefix(trimmedLine, "versions :") || strings.HasPrefix(trimmedLine, "version :") {
-			parts := strings.SplitN(trimmedLine, ":", 2)
-
-			if len(parts) > 1 {
-				version = strings.TrimSpace(parts[1])
-
-				// REMOVE ASTERISK IF PRESENT.
-				version = strings.TrimPrefix(version, "* ")
-				break
+		if json.Unmarshal(output, &data) == nil {
+			for _, dependency := range data.Dependencies {
+				installedDependencies[dependency.Name] = dependency.Version
 			}
 		}
 	}
 
-	if version == "" {
-		version = "version unknown"
+	for _, dep := range allDeps {
+		if _, exists := installedDependencies[dep]; exists {
+			continue
+		}
+
+		wg.Add(1)
+
+		go func(dep string) {
+			defer wg.Done()
+			cmd := exec.CommandContext(ctx, "composer", "show", dep)
+			output, err := cmd.Output()
+
+			if err == nil {
+				for _, line := range strings.Split(string(output), "\n") {
+					line = strings.TrimSpace(line)
+
+					if strings.HasPrefix(line, "versions :") || strings.HasPrefix(line, "version :") {
+						parts := strings.SplitN(line, ":", 2)
+
+						if len(parts) > 1 {
+							version := strings.TrimSpace(strings.TrimPrefix(parts[1], "* "))
+
+							mu.Lock()
+							installedDependencies[dep] = version
+							mu.Unlock()
+
+							return
+						}
+					}
+				}
+			}
+
+			mu.Lock()
+			installedDependencies[dep] = "version unknown"
+			mu.Unlock()
+		}(dep)
 	}
 
-	return true, version, nil
+	wg.Wait()
+
+	return installedDependencies
 }

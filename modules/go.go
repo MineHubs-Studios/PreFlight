@@ -71,7 +71,7 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 	return errors, warnings, successes
 }
 
-// getGoVersion RETURNS THE INSTALLED GO VERSION OR AN ERROR.
+// getGoVersion RETRIEVES THE INSTALLED Go VERSION.
 func getGoVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "go", "version")
 	output, err := cmd.Output()

@@ -78,8 +78,6 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	}
 
 	successes = append(successes, "package.json found.")
-
-	// GET ALL INSTALLED PACKAGES.
 	installedPackages, err := getInstalledPackages()
 
 	if err != nil {
@@ -97,7 +95,7 @@ func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	return errors, warnings, successes
 }
 
-// getInstalledPackages RETURNS A MAP OF ALL INSTALLED PACKAGES.
+// getInstalledPackages RETRIEVES THE INSTALLED Package DEPENDENCIES.
 func getInstalledPackages() (map[string]string, error) {
 	installedPackages := make(map[string]string)
 

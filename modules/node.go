@@ -55,7 +55,7 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 	return errors, warnings, successes
 }
 
-// getNodeVersion RETURNS THE INSTALLED Node.js VERSION OR AN ERROR.
+// getNodeVersion RETRIEVES THE INSTALLED Node.js VERSION.
 func getNodeVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "node", "--version")
 	output, err := cmd.Output()

@@ -121,7 +121,7 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	return errors, warnings, successes
 }
 
-// getPhpVersion RETURNS THE INSTALLED PHP VERSION OR AN ERROR.
+// getPhpVersion RETRIEVES THE INSTALLED PHP VERSION.
 func getPhpVersion(ctx context.Context) (phpVersion, buildDate, vcVersion string, err error) {
 	cmd := exec.CommandContext(ctx, "php", "--version")
 	output, err := cmd.Output()
