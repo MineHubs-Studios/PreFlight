@@ -13,14 +13,14 @@ import (
 	"sync"
 )
 
-type NpmModule struct{}
+type PackageModule struct{}
 
-func (n NpmModule) Name() string {
-	return "NPM"
+func (p PackageModule) Name() string {
+	return "Package"
 }
 
 // CheckRequirements VERIFIES Package CONFIGURATIONS AND DEPENDENCIES.
-func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
+func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
 		return nil, nil, nil

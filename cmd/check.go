@@ -25,7 +25,7 @@ var checkCmd = &cobra.Command{
 			"php":      modules.PhpModule{},
 			"composer": modules.ComposerModule{},
 			"node":     modules.NodeModule{},
-			"npm":      modules.NpmModule{},
+			"package":  modules.PackageModule{},
 			"go":       modules.GoModule{},
 		}
 
