@@ -15,6 +15,7 @@ func (n NodeModule) Name() string {
 	return "Node"
 }
 
+// CheckRequirements VERIFIES Node.js CONFIGURATIONS.
 func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {

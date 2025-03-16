@@ -185,6 +185,8 @@ func printMessages(ow *utils.OutputWriter, messages []string, color string, symb
 
 		if isUnderVersionMatch && (strings.Contains(msgLower, "installed package") ||
 			strings.Contains(msgLower, "missing package") ||
+			strings.Contains(msgLower, "installed dependency") ||
+			strings.Contains(msgLower, "missing dependency") ||
 			strings.Contains(msgLower, "installed extension") ||
 			strings.Contains(msgLower, "missing extension") ||
 			strings.Contains(msgLower, "installed module")) ||

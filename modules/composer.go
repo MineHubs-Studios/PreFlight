@@ -17,7 +17,7 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
-// CheckRequirements verifies Composer dependencies and configurations.
+// CheckRequirements VERIFIES Composer CONFIGURATIONS AND DEPENDENCIES.
 func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {

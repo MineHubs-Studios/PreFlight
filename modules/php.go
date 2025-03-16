@@ -17,6 +17,7 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
+// CheckRequirements VERIFIES PHP CONFIGURATIONS AND EXTENSIONS.
 func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {

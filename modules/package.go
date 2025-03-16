@@ -19,7 +19,7 @@ func (n NpmModule) Name() string {
 	return "NPM"
 }
 
-// CheckRequirements CHECK THE REQUIREMENTS FOR THE NPM MODULE.
+// CheckRequirements VERIFIES Package CONFIGURATIONS AND DEPENDENCIES.
 func (n NpmModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {

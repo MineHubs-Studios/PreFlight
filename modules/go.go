@@ -15,6 +15,7 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
+// CheckRequirements VERIFIES Go CONFIGURATIONS AND DEPENDENCIES.
 func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
