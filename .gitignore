@@ -12,5 +12,6 @@
 *.out
 go.work
 go.work.sum
-# Added by goreleaser init:
+
+# GO RELEASER.
 dist/

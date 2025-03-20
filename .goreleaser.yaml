@@ -32,24 +32,6 @@ archives:
       - goos: windows
         formats: [zip]
 
-nfpms:
-  - vendor: MineHubs Studios
-    homepage: https://github.com/MineHubs-Studios/PreFlight
-    maintainer: MineHubs Studios
-    description: A CLI tool to streamline project setup and ensure all dependencies are in check.
-    license: MIT
-    formats:
-      - deb
-      - rpm
-
-npmjs:
-  - name: "@minehubs/preflight"
-    skip_upload: false
-    package_json_path: ./npm/package.json
-    readme_path: ./npm/README.md
-    ids:
-      - preflight
-
 release:
   github:
     owner: MineHubs-Studios
