@@ -42,11 +42,11 @@ func FetchLatestTag(repoOwner, repoName string) (string, error) {
 		return "", fmt.Errorf("error fetching tags: %w", err)
 	}
 
-	defer func(Body io.ReadCloser) {
-		if err := Body.Close(); err != nil {
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
 			_ = err // EXPLICITLY DISCARD THE ERROR TO SILENCE SA90003.
 		}
-	}(resp.Body)
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("API request failed with status: %s", resp.Status)

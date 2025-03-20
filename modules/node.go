@@ -15,6 +15,7 @@ func (n NodeModule) Name() string {
 	return "Node"
 }
 
+// CheckRequirements VERIFIES Node.js CONFIGURATIONS.
 func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
@@ -23,12 +24,10 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 
 	nodeVersion, err := getNodeVersion(ctx)
 
-	// IF node.js IS NOT INSTALLED, THEN SKIP.
+	// SKIP MODULE IF Node.js IS NOT INSTALLED.
 	if err != nil {
 		return nil, nil, nil
 	}
-
-	successes = append(successes, fmt.Sprintf("Node.js is installed with version %s.", nodeVersion))
 
 	packageConfig := config.LoadPackageConfig()
 
@@ -37,29 +36,35 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 		return errors, warnings, successes
 	}
 
+	// VALIDATE Node.js VERSION.
 	if packageConfig.NodeVersion != "" {
-		isValid, feedback := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
+		isValid, _ := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
+		eolVersions := []string{"10", "12", "14", "15", "16", "17", "18"}
 
-		if isValid {
-			successes = append(successes, feedback)
-		} else {
-			errors = append(errors, feedback)
+		feedback := fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion)
+		isWarning := false
+
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(nodeVersion, "v"+eolVersion+".") {
+				warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
+				isWarning = true
+				break
+			}
 		}
-	}
 
-	// CHECK FOR EOL NODE VERSIONS.
-	eolVersions := []string{"10.", "12.", "14.", "15.", "16.", "17.", "18."}
-
-	for _, eolVersion := range eolVersions {
-		if strings.HasPrefix(nodeVersion, "v"+eolVersion) {
-			warnings = append(warnings, fmt.Sprintf("Detected Node.js version %s is End-of-Life (EOL). Consider upgrading!", nodeVersion))
+		if !isValid {
+			errors = append(errors, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
+			successes = append(successes, feedback)
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// getNodeVersion RETURNS THE INSTALLED Node.js VERSION OR AN ERROR.
+// getNodeVersion RETRIEVES THE INSTALLED Node.js VERSION.
 func getNodeVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "node", "--version")
 	output, err := cmd.Output()

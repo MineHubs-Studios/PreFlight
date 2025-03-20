@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -16,6 +17,7 @@ func (p PhpModule) Name() string {
 	return "PHP"
 }
 
+// CheckRequirements VERIFIES PHP CONFIGURATIONS AND EXTENSIONS.
 func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
@@ -24,48 +26,45 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 
 	phpVersion, buildDate, vcVersion, err := getPhpVersion(ctx)
 
-	// IF PHP IS NOT INSTALLED, THEN SKIP.
+	// SKIP MODULE IF PHP IS NOT INSTALLED.
 	if err != nil {
 		return nil, nil, nil
 	}
 
-	successes = append(successes, fmt.Sprintf("PHP is installed with version: %s (Built: %s, %s).", phpVersion, buildDate, vcVersion))
-
 	composerConfig := config.LoadComposerConfig()
-
-	// IF composer.json IS NOT FOUND, THEN SKIP.
-	if !composerConfig.HasJSON {
-		warnings = append(warnings, "composer.json file not found.")
-		return errors, warnings, successes
-	}
 
 	if composerConfig.Error != nil {
 		errors = append(errors, fmt.Sprintf("Failed to read composer.json: %v", composerConfig.Error))
 		return errors, warnings, successes
 	}
 
-	// CHECK PHP VERSION AGAINST REQUIREMENT.
+	// VALIDATE PHP VERSION.
 	if composerConfig.PHPVersion != "" {
-		isValid, feedback := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
+		isValid, _ := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
+		eolVersions := []string{"7.4", "8.0"}
 
-		if isValid && feedback != "" {
+		feedback := fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion)
+		isWarning := false
+
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(phpVersion, eolVersion+".") {
+				feedback = fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), Consider upgrading!", utils.Reset, phpVersion)
+				isWarning = true
+				break
+			}
+		}
+
+		if !isValid {
+			errors = append(errors, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
 			successes = append(successes, feedback)
-		} else if !isValid {
-			errors = append(errors, feedback)
 		}
 	}
 
-	// CHECK FOR EOL PHP VERSIONS.
-	eolVersions := []string{"7.4", "8.0"}
-
-	for _, eolVersion := range eolVersions {
-		if strings.HasPrefix(phpVersion, eolVersion+".") {
-			warnings = append(warnings, fmt.Sprintf("Detected PHP version %s is End-of-Life (EOL). Consider upgrading!", phpVersion))
-		}
-	}
-
+	// CHECK PHP EXTENSIONS.
 	if len(composerConfig.PHPExtensions) > 0 {
-		// GET ALL INSTALLED PHP EXTENSIONS.
 		installedExtensions, err := getPhpExtensions(ctx)
 
 		if err != nil {
@@ -81,32 +80,54 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 			"gmagick": {}, "imagemagick": {}, "mqseries": {}, "parle": {}, "rnp": {}, "svm": {}, "svn": {}, "ui": {}, "omq": {},
 		}
 
-		// CHECK REQUIRED PHP EXTENSIONS.
 		for _, ext := range composerConfig.PHPExtensions {
-			if _, exists := installedExtensions[ext]; !exists {
-				errors = append(errors, fmt.Sprintf("PHP extension '%s' is missing, please enable it.", ext))
+			if _, exists := installedExtensions[ext]; exists {
+				feedback := fmt.Sprintf("Installed extension %s%s.", utils.Reset, ext)
+				isWarning := false
+
+				if _, deprecated := deprecatedExtensions[ext]; deprecated {
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ deprecated), Consider removing or replacing it.", utils.Reset, ext)
+					isWarning = true
+				} else if _, experimental := experimentalExtensions[ext]; experimental {
+					feedback = fmt.Sprintf("Installed extension %s(%s ⟶ experimental), Use with caution.", utils.Reset, ext)
+					isWarning = true
+				}
+
+				if isWarning {
+					warnings = append(warnings, feedback)
+				} else {
+					successes = append(successes, feedback)
+				}
+
 				continue
 			}
 
-			successes = append(successes, fmt.Sprintf("PHP extension '%s' is installed.", ext))
+			// Handle PHP 8.4+ split extensions
+			if checkPHP84OrHigher(phpVersion) {
+				pdoExtensions := map[string][]string{
+					"pdo": {"pdo_sqlite", "pdo_mysql", "pdo_pgsql", "pdo_oci", "pdo_odbc", "pdo_firebird"},
+				}
 
-			// CHECK FOR DEPRECATED EXTENSIONS.
-			if _, deprecated := deprecatedExtensions[ext]; deprecated {
-				warnings = append(warnings, fmt.Sprintf("PHP extension '%s' is deprecated, consider removing or replacing it.", ext))
-				continue
+				if alternatives, isSplitExt := pdoExtensions[ext]; isSplitExt {
+					for _, altExt := range alternatives {
+						if _, exists := installedExtensions[altExt]; exists {
+							successes = append(successes, fmt.Sprintf("Installed extension %s%s (%s).", utils.Reset, ext, altExt))
+							goto NextExtension
+						}
+					}
+				}
 			}
 
-			// CHECK FOR EXPERIMENTAL EXTENSIONS.
-			if _, experimental := experimentalExtensions[ext]; experimental {
-				warnings = append(warnings, fmt.Sprintf("PHP extension '%s' is experimental, use with caution.", ext))
-			}
+			errors = append(errors, fmt.Sprintf("Missing extension %s%s, Please enable it.", utils.Reset, ext))
+
+		NextExtension:
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// getPhpVersion RETURNS THE INSTALLED PHP VERSION OR AN ERROR.
+// getPhpVersion RETRIEVES THE INSTALLED PHP VERSION.
 func getPhpVersion(ctx context.Context) (phpVersion, buildDate, vcVersion string, err error) {
 	cmd := exec.CommandContext(ctx, "php", "--version")
 	output, err := cmd.Output()
@@ -116,36 +137,31 @@ func getPhpVersion(ctx context.Context) (phpVersion, buildDate, vcVersion string
 	}
 
 	lines := strings.Split(string(output), "\n")
+
 	if len(lines) == 0 {
 		return "", "", "", fmt.Errorf("unexpected output from php --version")
 	}
 
-	// EXTRACT PHP VERSION.
 	versionRegex := regexp.MustCompile(`PHP (\d+\.\d+\.\d+)`)
-	versionMatches := versionRegex.FindStringSubmatch(lines[0])
 
-	if len(versionMatches) < 2 {
+	if matches := versionRegex.FindStringSubmatch(lines[0]); len(matches) >= 2 {
+		phpVersion = matches[1]
+	} else {
 		return "", "", "", fmt.Errorf("could not parse PHP version from: %s", lines[0])
 	}
 
-	phpVersion = versionMatches[1]
-
-	// EXTRACT BUILD DATE AND VC++ VERSION.
 	buildRegex := regexp.MustCompile(`\(built: ([^)]+)\) \((.*?)\)`)
-	buildMatches := buildRegex.FindStringSubmatch(lines[0])
 
-	if len(buildMatches) >= 3 {
-		buildDate = buildMatches[1]
-		vcVersion = buildMatches[2]
+	if matches := buildRegex.FindStringSubmatch(lines[0]); len(matches) >= 3 {
+		buildDate, vcVersion = matches[1], matches[2]
 	} else {
-		buildDate = "unknown"
-		vcVersion = "unknown"
+		buildDate, vcVersion = "unknown", "unknown"
 	}
 
 	return phpVersion, buildDate, vcVersion, nil
 }
 
-// getPhpExtensions RETURNS A MAP OF ALL INSTALLED PHP EXTENSIONS.
+// getPhpExtensions RETRIEVES THE INSTALLED PHP EXTENSIONS.
 func getPhpExtensions(ctx context.Context) (map[string]struct{}, error) {
 	cmd := exec.CommandContext(ctx, "php", "-m")
 	output, err := cmd.Output()
@@ -154,13 +170,27 @@ func getPhpExtensions(ctx context.Context) (map[string]struct{}, error) {
 		return nil, fmt.Errorf("failed to run php -m: %w", err)
 	}
 
-	PHPExtensions := make(map[string]struct{})
+	extensions := make(map[string]struct{})
 
 	for _, ext := range strings.Split(string(output), "\n") {
 		if trimmed := strings.TrimSpace(ext); trimmed != "" {
-			PHPExtensions[trimmed] = struct{}{}
+			extensions[trimmed] = struct{}{}
 		}
 	}
 
-	return PHPExtensions, nil
+	return extensions, nil
+}
+
+// checkPHP84OrHigher DETERMINES IF THE PHP VERSION IS 8.4 OR HIGHER.
+func checkPHP84OrHigher(phpVersion string) bool {
+	parts := strings.Split(phpVersion, ".")
+
+	if len(parts) < 2 {
+		return false
+	}
+
+	major, err1 := strconv.Atoi(parts[0])
+	minor, err2 := strconv.Atoi(parts[1])
+
+	return err1 == nil && err2 == nil && (major > 8 || (major == 8 && minor >= 4))
 }

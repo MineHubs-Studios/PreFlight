@@ -20,19 +20,19 @@ func RunChecks(ctx context.Context) int {
 	categorizedResults := make([]CheckResult, 0, len(modules))
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(Bold + Blue + "\n╭─────────────────────────────────────────╮" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "\n╭─────────────────────────────────────────╮" + utils.Reset) {
 		return 0
 	}
 
-	if !ow.Println(Bold + Blue + "│" + Cyan + Bold + "  🚀 PreFlight Checker  " + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 PreFlight Checker  " + utils.Reset) {
 		return 0
 	}
 
-	if !ow.Println(Bold + Blue + "╰─────────────────────────────────────────╯" + Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "╰─────────────────────────────────────────╯" + utils.Reset) {
 		return 0
 	}
 
-	if !ow.Println(Bold + "\nProcessing modules.." + Reset) {
+	if !ow.Println(utils.Bold + "\nProcessing modules.." + utils.Reset) {
 		return 0
 	}
 
@@ -48,7 +48,7 @@ func RunChecks(ctx context.Context) int {
 
 		moduleStart := time.Now()
 
-		if !ow.Printf("  %s %s %s", Yellow+TimeGlass+Reset, Bold+module.Name()+Reset, Yellow+"..."+Reset) {
+		if !ow.Printf("  %s %s %s", utils.Yellow+utils.TimeGlass+utils.Reset, utils.Bold+module.Name()+utils.Reset, utils.Yellow+"..."+utils.Reset) {
 			return 0
 		}
 
@@ -67,17 +67,17 @@ func RunChecks(ctx context.Context) int {
 		var statusColor, statusSymbol string
 
 		if len(errors) > 0 {
-			statusColor = Red
-			statusSymbol = CrossMark
+			statusColor = utils.Red
+			statusSymbol = utils.CrossMark
 		} else if len(warnings) > 0 {
-			statusColor = Yellow
-			statusSymbol = WarningSign
+			statusColor = utils.Yellow
+			statusSymbol = utils.WarningSign
 		} else {
-			statusColor = Green
-			statusSymbol = CheckMark
+			statusColor = utils.Green
+			statusSymbol = utils.CheckMark
 		}
 
-		if !ow.Printf("\r  %s %s completed (%dms)\n", statusColor+statusSymbol+Reset, Bold+module.Name()+Reset, moduleDuration.Milliseconds()) {
+		if !ow.Printf("\r  %s %s completed (%dms)\n", statusColor+statusSymbol+utils.Reset, utils.Bold+module.Name()+utils.Reset, moduleDuration.Milliseconds()) {
 			return 0
 		}
 
@@ -105,22 +105,22 @@ func printResults(results []CheckResult) {
 	for _, result := range results {
 		var sb strings.Builder
 
-		sb.WriteString(Reset)
-		sb.WriteString(Bold)
+		sb.WriteString(utils.Reset)
+		sb.WriteString(utils.Bold)
 		sb.WriteString("\nScope: ")
 		sb.WriteString(result.Scope)
-		sb.WriteString(Reset)
+		sb.WriteString(utils.Reset)
 
 		if !ow.Println(sb.String()) {
 			return
 		}
 
 		if len(result.Successes) > 0 {
-			if !ow.Println(Green + "  Successes:" + Reset) {
+			if !ow.Println(utils.Green + "  Successes:" + utils.Reset) {
 				return
 			}
 
-			printMessages(ow, result.Successes, Green, CheckMark)
+			printMessages(ow, result.Successes, utils.Green, utils.CheckMark)
 
 			if !ow.Println("") {
 				return
@@ -128,11 +128,11 @@ func printResults(results []CheckResult) {
 		}
 
 		if len(result.Warnings) > 0 {
-			if !ow.Println(Yellow + "  Warnings:" + Reset) {
+			if !ow.Println(utils.Yellow + "  Warnings:" + utils.Reset) {
 				return
 			}
 
-			printMessages(ow, result.Warnings, Yellow, WarningSign)
+			printMessages(ow, result.Warnings, utils.Yellow, utils.WarningSign)
 
 			if !ow.Println("") {
 				return
@@ -140,11 +140,11 @@ func printResults(results []CheckResult) {
 		}
 
 		if len(result.Errors) > 0 {
-			if !ow.Println(Red + "  Errors:" + Reset) {
+			if !ow.Println(utils.Red + "  Errors:" + utils.Reset) {
 				return
 			}
 
-			printMessages(ow, result.Errors, Red, CrossMark)
+			printMessages(ow, result.Errors, utils.Red, utils.CrossMark)
 
 			if !ow.Println("") {
 				return
@@ -183,10 +183,14 @@ func printMessages(ow *utils.OutputWriter, messages []string, color string, symb
 			isUnderVersionMatch = false
 		}
 
-		if isUnderVersionMatch && (strings.Contains(msgLower, "composer package") ||
-			strings.Contains(msgLower, "npm package") ||
-			strings.Contains(msgLower, "php extension") ||
-			strings.Contains(msgLower, "go module")) {
+		if isUnderVersionMatch && (strings.Contains(msgLower, "installed package") ||
+			strings.Contains(msgLower, "missing package") ||
+			strings.Contains(msgLower, "installed dependency") ||
+			strings.Contains(msgLower, "missing dependency") ||
+			strings.Contains(msgLower, "installed extension") ||
+			strings.Contains(msgLower, "missing extension") ||
+			strings.Contains(msgLower, "installed module")) ||
+			strings.Contains(msgLower, "missing module") {
 			indentLevel = 6
 		} else if !strings.Contains(msg, "Scope:") {
 			indentLevel = 4
@@ -208,28 +212,28 @@ func finalMessage(results []CheckResult) int {
 	var exitCode int
 
 	if totalErrors > 0 {
-		statusIcon = CrossMark
-		statusColor = Red
+		statusIcon = utils.CrossMark
+		statusColor = utils.Red
 		statusText = "Check completed, please resolve."
 		exitCode = 1
 	} else if totalWarnings > 0 {
-		statusIcon = WarningSign
-		statusColor = Yellow
+		statusIcon = utils.WarningSign
+		statusColor = utils.Yellow
 		statusText = "Check completed with warnings, please review."
 		exitCode = 0
 	} else {
-		statusIcon = CheckMark
-		statusColor = Green
+		statusIcon = utils.CheckMark
+		statusColor = utils.Green
 		statusText = "Check completed successfully!"
 		exitCode = 0
 	}
 
 	currentTime := time.Now().Format("02-01-2006 15:04:05")
 
-	fmt.Println(Bold + Blue + "\n╭────────────────────────────────────────────────────────────────╮" + Reset)
-	fmt.Println(Bold + Blue + "│ " + statusColor + statusIcon + " Status: " + statusText + Reset)
-	fmt.Println(Bold + Blue + "│ " + Dim + Clock + " Ended: " + currentTime + Reset)
-	fmt.Println(Bold + Blue + "╰────────────────────────────────────────────────────────────────╯" + Reset)
+	fmt.Println(utils.Bold + utils.Blue + "\n╭────────────────────────────────────────────────────────────────╮" + utils.Reset)
+	fmt.Println(utils.Bold + utils.Blue + "│ " + statusColor + statusIcon + " Status: " + statusText + utils.Reset)
+	fmt.Println(utils.Bold + utils.Blue + "│ " + utils.Dim + utils.Clock + " Ended: " + currentTime + utils.Reset)
+	fmt.Println(utils.Bold + utils.Blue + "╰────────────────────────────────────────────────────────────────╯" + utils.Reset)
 
 	return exitCode
 }

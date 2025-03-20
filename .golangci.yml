@@ -4,9 +4,17 @@ run:
 
 linters:
   enable:
-    - cyclop         # FUNCTION COMPLEXITY ANALYSIS.
+    - bidichk        # CHECKS FOR DANGEROUS UNICODE PATTERNS.
+    - bodyclose      # CHECKS FOR MISSING CLOSE CALLS TO REQUEST BODY.
+    - contextcheck   # CHECKS FOR CONTEXT LEAKS.
+    - copyloopvar    # DETECTS COPYING LOOP VARIABLES.
     - dupl           # IDENTIFY CODE DUPLICATIONS.
+    - durationcheck  # CHECKS FOR DURATION USAGE.
     - errcheck       # CHECK FOR UNHANDLED ERRORS.
+    - errchkjson     # CHECKS FOR ERRORS IN JSON UNMARSHALLING.
+    - errname        # CHECKS FOR ERRORS WITH GENERIC NAMES.
+    - errorlint      # FIND CODE THAT MAY CAUSE ERRORS.
+    - fatcontext     # CHECKS FOR CONTEXTS THAT ARE TOO FAT.
     - gofmt          # ENSURE PROPER FORMATTING.
     - gosec          # IDENTIFY SECURITY VULNERABILITIES.
     - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
@@ -14,16 +22,18 @@ linters:
     - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
     - misspell       # DETECT COMMONLY MISSPELLED WORDS.
     - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
+    - nilnil         # DETECTS COMPARISONS BETWEEN NIL AND NIL.
     - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
     - revive         # FAST, CONFIGURABLE LINTER.
     - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
     - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
+    - whitespace     # CHECK FOR UNNECESSARY WHITESPACE.
 
 linters-settings:
-  cyclop:
-    max-complexity: 25
+  errchkjson:
+    check-error-free-encoding: true
   misspell:
     locale: US
 

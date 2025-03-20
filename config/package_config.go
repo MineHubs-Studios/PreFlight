@@ -1,6 +1,7 @@
 package config
 
 import (
+	"PreFlight/utils"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -19,6 +20,7 @@ type PackageJSON struct {
 }
 
 type PackageConfig struct {
+	PackageManager  utils.PackageManager
 	NodeVersion     string
 	NPMVersion      string
 	PNPMVersion     string
@@ -26,33 +28,17 @@ type PackageConfig struct {
 	Dependencies    []string
 	DevDependencies []string
 	HasJSON         bool
-	HasPackageLock  bool
-	HasYarnLock     bool
-	HasPnpmLock     bool
 	Error           error
 }
 
 // LoadPackageConfig PARSES package.json, LOCK FILES AND RETURNS PackageConfig.
 func LoadPackageConfig() PackageConfig {
 	packageConfig := PackageConfig{}
+	packageConfig.PackageManager = utils.DetectPackageManager("package")
 
 	if _, err := os.Stat("package.json"); err == nil {
 		packageConfig.HasJSON = true
-	}
-
-	if _, err := os.Stat("package-lock.json"); err == nil {
-		packageConfig.HasPackageLock = true
-	}
-
-	if _, err := os.Stat("yarn.lock"); err == nil {
-		packageConfig.HasYarnLock = true
-	}
-
-	if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
-		packageConfig.HasPnpmLock = true
-	}
-
-	if !packageConfig.HasJSON {
+	} else {
 		return packageConfig
 	}
 

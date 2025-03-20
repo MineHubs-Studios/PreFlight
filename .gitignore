@@ -11,3 +11,7 @@
 # GO SPECIFIC.
 *.out
 go.work
+go.work.sum
+
+# GO RELEASER.
+dist/

@@ -1,23 +1,25 @@
 package config
 
 import (
+	"PreFlight/utils"
 	"fmt"
 	"os"
 	"strings"
 )
 
 type GoConfig struct {
-	GoVersion         string
-	RequiredGoVersion string
-	Modules           []string
-	HasMod            bool
-	Error             error
+	PackageManager utils.PackageManager
+	GoVersion      string
+	Modules        []string
+	HasMod         bool
+	Error          error
 }
 
 func LoadGoConfig() GoConfig {
 	var goConfig GoConfig
+	goConfig.PackageManager = utils.DetectPackageManager("go")
 
-	if _, err := os.Stat("go.mod"); err != nil {
+	if goConfig.PackageManager.LockFile == "" {
 		goConfig.HasMod = false
 		return goConfig
 	}
@@ -41,7 +43,7 @@ func LoadGoConfig() GoConfig {
 		line = strings.TrimSpace(line)
 
 		if strings.HasPrefix(line, "go ") {
-			goConfig.RequiredGoVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
+			goConfig.GoVersion = strings.TrimSpace(strings.TrimPrefix(line, "go "))
 		}
 
 		if strings.HasPrefix(line, "require (") {

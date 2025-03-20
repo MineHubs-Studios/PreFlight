@@ -15,6 +15,7 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
+// CheckRequirements VERIFIES Go CONFIGURATIONS AND DEPENDENCIES.
 func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
 	// CHECK IF CONTEXT IS CANCELED.
 	if ctx.Err() != nil {
@@ -23,12 +24,10 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	goVersion, err := getGoVersion(ctx)
 
-	// IF Go IS NOT INSTALLED, THEN SKIP.
+	// SKIP MODULE IF Go IS NOT INSTALLED.
 	if err != nil {
 		return nil, nil, nil
 	}
-
-	successes = append(successes, fmt.Sprintf("Go is installed with version %s.", goVersion))
 
 	goConfig := config.LoadGoConfig()
 
@@ -43,39 +42,47 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	successes = append(successes, "go.mod found.")
 
-	if goConfig.RequiredGoVersion != "" {
-		isValid, feedback := utils.ValidateVersion(goVersion, goConfig.RequiredGoVersion)
+	// VALIDATE Go VERSION.
+	if goConfig.GoVersion != "" {
+		isValid, _ := utils.ValidateVersion(goVersion, goConfig.GoVersion)
+		eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
 
-		if isValid && feedback != "" {
+		feedback := fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion)
+		isWarning := false
+
+		for _, eolVersion := range eolVersions {
+			if strings.HasPrefix(goVersion, eolVersion+".") {
+				warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
+				isWarning = true
+				break
+			}
+		}
+
+		if !isValid {
+			errors = append(errors, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
+		} else if isWarning {
+			warnings = append(warnings, feedback)
+		} else {
 			successes = append(successes, feedback)
-		} else if !isValid {
-			errors = append(errors, feedback)
 		}
 	} else {
 		warnings = append(warnings, "Go version requirement not specified in go.mod.")
 	}
 
-	// CHECK FOR EOL GO VERSIONS.
-	eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
-
-	for _, eolVersion := range eolVersions {
-		if strings.HasPrefix(goVersion, eolVersion) {
-			warnings = append(warnings, fmt.Sprintf("Detected Go version %s is End-of-Life (EOL). Consider upgrading!", goVersion))
-		}
-	}
+	installedModules := getInstalledModules(ctx)
 
 	for _, mod := range goConfig.Modules {
-		if getInstalledModules(ctx, mod) {
-			successes = append(successes, fmt.Sprintf("Go module %s is installed.", mod))
+		if _, exists := installedModules[mod]; exists {
+			successes = append(successes, fmt.Sprintf("Installed module %s%s.", utils.Reset, mod))
 		} else {
-			errors = append(errors, fmt.Sprintf("Go module %s is missing. Run 'go get %s'.", mod, mod))
+			errors = append(errors, fmt.Sprintf("Missing module %s, Run 'go get %s'.", utils.Reset, mod))
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// getGoVersion RETURNS THE INSTALLED GO VERSION OR AN ERROR.
+// getGoVersion RETRIEVES THE INSTALLED Go VERSION.
 func getGoVersion(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "go", "version")
 	output, err := cmd.Output()
@@ -94,10 +101,26 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unexpected go version format: %s", versionOutput)
 }
 
-// getInstalledModules CHECKS IF A SPECIFIC MODULE IS INSTALLED.
-func getInstalledModules(ctx context.Context, moduleName string) bool {
-	cmd := exec.CommandContext(ctx, "go", "list", "-m", moduleName)
-	err := cmd.Run()
+// getInstalledModules RETRIEVES THE INSTALLED Go MODULES.
+func getInstalledModules(ctx context.Context) map[string]struct{} {
+	modules := make(map[string]struct{})
 
-	return err == nil
+	cmd := exec.CommandContext(ctx, "go", "list", "-m", "all")
+	output, err := cmd.Output()
+
+	if err != nil {
+		return modules
+	}
+
+	for _, line := range strings.Split(string(output), "\n") {
+		if trimmed := strings.TrimSpace(line); trimmed != "" {
+			fields := strings.Fields(trimmed)
+
+			if len(fields) > 0 {
+				modules[fields[0]] = struct{}{}
+			}
+		}
+	}
+
+	return modules
 }
