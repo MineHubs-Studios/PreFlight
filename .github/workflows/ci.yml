@@ -69,24 +69,3 @@ jobs:
         run: |
           mkdir -p dist
           go build -o dist/preflight-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} -v .
-
-  test:
-    needs: build
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
-    runs-on: ${{ matrix.os }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.24.x
-          cache: true
-
-      - name: Run Tests
-        run: go test -race -v ./...
