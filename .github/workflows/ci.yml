@@ -57,7 +57,7 @@ jobs:
       - name: Print Go Version
         run: go version
 
-      - name: Build (Linux AMD64 Only)
+      - name: Build (Linux AMD64)
         run: |
           mkdir -p dist
           GOOS=linux GOARCH=amd64 go build -o dist/preflight-linux-amd64 -v .
