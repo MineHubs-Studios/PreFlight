@@ -42,11 +42,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        goos: [windows, linux, darwin]
-        goarch: [amd64]
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,10 +57,7 @@ jobs:
       - name: Print Go Version
         run: go version
 
-      - name: Build
-        env:
-          GOOS: ${{ matrix.goos }}
-          GOARCH: ${{ matrix.goarch }}
+      - name: Build (Linux AMD64 Only)
         run: |
           mkdir -p dist
-          go build -o dist/preflight-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goos == 'windows' && '.exe' || '' }} -v .
+          GOOS=linux GOARCH=amd64 go build -o dist/preflight-linux-amd64 -v .
