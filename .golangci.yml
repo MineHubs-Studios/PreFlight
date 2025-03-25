@@ -37,7 +37,6 @@ linters:
 formatters:
   enable:
     - gofmt     # ENSURE PROPER FORMATTING.
-    - goimports # ENSURE PROPER IMPORTS.
     - golines   # ENSURE PROPER LINE LENGTHS.
   settings:
       golines:
