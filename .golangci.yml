@@ -31,8 +31,6 @@ linters:
       check-error-free-encoding: true
     govet:
       check-shadowing: true
-    gosec:
-      enable
     misspell:
       locale: US
 
