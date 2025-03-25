@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync"
 )
@@ -118,19 +117,34 @@ func getInstalledPackages() (map[string]string, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	var safeDep = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
-
 	for dep := range installedPackages {
 		wg.Add(1)
 
 		go func(dep string) {
 			defer wg.Done()
 
-			if !safeDep.MatchString(dep) {
+			if strings.Contains(dep, "..") || strings.Contains(dep, "/") && !strings.HasPrefix(dep, "@") {
 				return
 			}
 
-			path := filepath.Join("node_modules", dep, "package.json")
+			var path string
+
+			if strings.HasPrefix(dep, "@") {
+				parts := strings.SplitN(dep, "/", 2)
+
+				if len(parts) != 2 || strings.Contains(parts[1], "..") || strings.Contains(parts[1], "/") {
+					return
+				}
+				path = filepath.Join("node_modules", parts[0], parts[1], "package.json")
+			} else {
+				path = filepath.Join("node_modules", dep, "package.json")
+			}
+
+			path = filepath.Clean(path)
+
+			if !strings.HasPrefix(path, filepath.Join("node_modules", "")) {
+				return
+			}
 
 			if data, err := os.ReadFile(path); err == nil {
 				var packageInfo struct {
