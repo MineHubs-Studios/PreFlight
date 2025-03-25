@@ -50,4 +50,6 @@ issues:
   max-same-issues: 0
 
 output:
-  print-issued-lines: true
+  formats:
+    text:
+      print-issued-lines: true
