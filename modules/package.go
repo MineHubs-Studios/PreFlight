@@ -157,7 +157,7 @@ func getInstalledPackages() (map[string]string, error) {
 				return
 			}
 
-			data, err := os.ReadFile(path)
+			data, err := os.ReadFile(path) //nolint:gosec
 
 			if err == nil {
 				var packageInfo struct {
