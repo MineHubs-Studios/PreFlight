@@ -15,9 +15,7 @@ linters:
     - errname        # CHECKS FOR ERRORS WITH GENERIC NAMES.
     - errorlint      # FIND CODE THAT MAY CAUSE ERRORS.
     - fatcontext     # CHECKS FOR CONTEXTS THAT ARE TOO FAT.
-    - gofmt          # ENSURE PROPER FORMATTING.
     - gosec          # IDENTIFY SECURITY VULNERABILITIES.
-    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
     - govet          # REPORT SUSPICIOUS CONSTRUCTS.
     - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
     - misspell       # DETECT COMMONLY MISSPELLED WORDS.
@@ -26,10 +24,13 @@ linters:
     - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
     - revive         # FAST, CONFIGURABLE LINTER.
     - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
-    - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
     - whitespace     # CHECK FOR UNNECESSARY WHITESPACE.
+
+formatters:
+  enable:
+    - gofmt # ENSURE PROPER FORMATTING.
 
 linters-settings:
   errchkjson:
