@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 )
@@ -117,11 +118,18 @@ func getInstalledPackages() (map[string]string, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
+	var safeDep = regexp.MustCompile(`^[a-zA-Z0-9_\-]+$`)
+
 	for dep := range installedPackages {
 		wg.Add(1)
 
 		go func(dep string) {
 			defer wg.Done()
+
+			if !safeDep.MatchString(dep) {
+				return
+			}
+
 			path := filepath.Join("node_modules", dep, "package.json")
 
 			if data, err := os.ReadFile(path); err == nil {
