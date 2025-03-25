@@ -1,6 +1,7 @@
+version: "2"
+
 run:
   timeout: 5m  # MAXIMUM RUN TIME FOR LINTING.
-  tests: true  # INCLUDE TEST FILES IN THE ANALYSIS.
 
 linters:
   enable:
@@ -15,9 +16,7 @@ linters:
     - errname        # CHECKS FOR ERRORS WITH GENERIC NAMES.
     - errorlint      # FIND CODE THAT MAY CAUSE ERRORS.
     - fatcontext     # CHECKS FOR CONTEXTS THAT ARE TOO FAT.
-    - gofmt          # ENSURE PROPER FORMATTING.
     - gosec          # IDENTIFY SECURITY VULNERABILITIES.
-    - gosimple       # HIGHLIGHT SIMPLER CODE ALTERNATIVES.
     - govet          # REPORT SUSPICIOUS CONSTRUCTS.
     - ineffassign    # DETECT INEFFECTUAL ASSIGNMENTS.
     - misspell       # DETECT COMMONLY MISSPELLED WORDS.
@@ -26,21 +25,28 @@ linters:
     - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
     - revive         # FAST, CONFIGURABLE LINTER.
     - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
-    - stylecheck     # STYLE CHECKER ADHERING TO Go CONVENTIONS.
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
     - whitespace     # CHECK FOR UNNECESSARY WHITESPACE.
+  settings:
+    errchkjson:
+      check-error-free-encoding: true
+    misspell:
+      locale: US
 
-linters-settings:
-  errchkjson:
-    check-error-free-encoding: true
-  misspell:
-    locale: US
+formatters:
+  enable:
+    - gofmt     # ENSURE PROPER FORMATTING.
+    - golines   # ENSURE PROPER LINE LENGTHS.
+  settings:
+      golines:
+        max-len: 200
 
 issues:
   max-issues-per-linter: 0
   max-same-issues: 0
 
 output:
-  print-issued-lines: true
-
+  formats:
+    text:
+      print-issued-lines: true
