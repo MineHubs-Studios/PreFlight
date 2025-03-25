@@ -26,16 +26,24 @@ linters:
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.
     - whitespace     # CHECK FOR UNNECESSARY WHITESPACE.
+  settings:
+    errchkjson:
+      check-error-free-encoding: true
+    govet:
+      check-shadowing: true
+    gosec:
+      enable
+    misspell:
+      locale: US
 
 formatters:
   enable:
-    - gofmt # ENSURE PROPER FORMATTING.
-
-linters-settings:
-  errchkjson:
-    check-error-free-encoding: true
-  misspell:
-    locale: US
+    - gofmt     # ENSURE PROPER FORMATTING.
+    - goimports # ENSURE PROPER IMPORTS.
+    - golines   # ENSURE PROPER LINE LENGTHS.
+  settings:
+      golines:
+        max-len: 200
 
 issues:
   max-issues-per-linter: 0
@@ -43,4 +51,3 @@ issues:
 
 output:
   print-issued-lines: true
-
