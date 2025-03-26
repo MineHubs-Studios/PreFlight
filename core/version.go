@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"sync"
 	"time"
 )
 
@@ -21,19 +20,12 @@ type VersionData struct {
 
 // GitHubTag REPRESENT THE DATA STRUCTURE RETURNED BY GitHub API.
 type GitHubTag struct {
-	Name       string `json:"name"`
-	ZipballURL string `json:"zipball_url"`
-	TarballURL string `json:"tarball_url"`
-	Commit     struct {
-		SHA string `json:"sha"`
-		URL string `json:"url"`
-	} `json:"commit"`
-	NodeID string `json:"node_id"`
+	Name string `json:"name"`
 }
 
-// FetchLatestTag GETS THE LATEST TAG AND ITS PUBLISHING DATE FROM GitHub API.
-func FetchLatestTag(repoOwner, repoName string) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", repoOwner, repoName)
+// FetchLatestTag RETRIEVES THE LATEST GitHub TAG FOR A REPOSITORY.
+func FetchLatestTag(owner, repo string) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", owner, repo)
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	resp, err := client.Get(url)
@@ -42,14 +34,15 @@ func FetchLatestTag(repoOwner, repoName string) (string, error) {
 		return "", fmt.Errorf("error fetching tags: %w", err)
 	}
 
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			_ = err // EXPLICITLY DISCARD THE ERROR TO SILENCE SA90003.
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+
 		}
-	}()
+	}(resp.Body)
 
 	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("API request failed with status: %s", resp.Status)
+		return "", fmt.Errorf("GitHub API returned status: %s", resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -61,42 +54,39 @@ func FetchLatestTag(repoOwner, repoName string) (string, error) {
 	var tags []GitHubTag
 
 	if err := json.Unmarshal(body, &tags); err != nil {
-		return "", fmt.Errorf("error parsing JSON: %w", err)
+		return "", fmt.Errorf("error decoding JSON: %w", err)
 	}
 
 	if len(tags) == 0 {
-		return "", fmt.Errorf("no tags found")
+		return "", fmt.Errorf("no tags found in GitHub repo")
 	}
 
 	return tags[0].Name, nil
 }
 
-// GetVersionInfo COLLECTS ALL VERSION DATA.
+// GetVersionInfo ASYNCHRONOUSLY FETCHES VERSION METADATA.
 func GetVersionInfo(currentVersion, goVersion, platform string) (*VersionData, chan bool) {
 	info := &VersionData{
-		Version:       currentVersion,
-		LatestVersion: "",
-		GoVersion:     goVersion,
-		Platform:      platform,
+		Version:   currentVersion,
+		GoVersion: goVersion,
+		Platform:  platform,
 	}
 
 	done := make(chan bool)
 
-	var wg sync.WaitGroup
-	wg.Add(1)
-
-	// FETCH LATEST VERSION.
 	go func() {
-		latestVersion, err := FetchLatestTag("MineHubs-Studios", "PreFlight")
+		defer close(done)
+
+		latest, err := FetchLatestTag("MineHubs-Studios", "PreFlight")
 
 		if err != nil {
 			info.Error = err
 			info.LatestVersion = "Unable to check"
-		} else {
-			info.LatestVersion = latestVersion
+			return
 		}
 
-		close(done)
+		info.LatestVersion = latest
+		info.HasUpdate = currentVersion != latest
 	}()
 
 	return info, done
