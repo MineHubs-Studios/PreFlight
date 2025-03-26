@@ -48,11 +48,11 @@ It helps developers ensure that **all required tools and configurations** are se
 
 ### ⚙️ **Customization & Flags**
 
-| Flag                | Description                                                   |
-|---------------------|---------------------------------------------------------------|
-| `--pm=<managers>`  | Filter by package manager (e.g., `--pm=php,composer,node`).   |
-| `--force`          | Force reinstall dependencies (for `fix` command).             |
-| `--timeout=<sec>`  | Set timeout for dependency checks (for `check` command).      |
+| Flag              | Description                                                 | Cmd   |
+|-------------------|-------------------------------------------------------------|-------|
+| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). | check |
+| `--timeout=<sec>` | Set timeout for dependency checks.                          | check |
+| `--force`         | Force reinstall dependencies.                               | fix   |
 
 ---
 
