@@ -18,7 +18,8 @@ func FixDependencies(ctx context.Context, force bool) {
 		return
 	}
 
-	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Red + utils.WarningSign + " Be careful this is a experimental feature, which means is not stable yet! Continue on your own risk." + utils.Reset) {
+	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Red + utils.WarningSign + " " +
+		"Be careful this is a experimental feature, which means is not stable yet! Continue on your own risk." + utils.Reset) {
 		return
 	}
 
