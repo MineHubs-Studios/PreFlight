@@ -34,7 +34,7 @@ archives:
 
 release:
   github:
-    owner: Minehubs-Studios
+    owner: MineHubs-Studios
     name: PreFlight
   prerelease: auto
   draft: false
