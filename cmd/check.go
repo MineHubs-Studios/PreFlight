@@ -33,16 +33,26 @@ var checkCmd = &cobra.Command{
 			core.RegisterAvailableModule(name, module)
 		}
 
+		aliasMap := map[string]string{
+			"npm":  "package",
+			"pnpm": "package",
+			"yarn": "package",
+			"bun":  "package",
+		}
+
 		// PROCESS REQUESTED MODULES.
 		var moduleNames []string
 
 		if packageManagers != "" {
-			// SPLIT, TRIM AND VALIDATE MODULE NAMES.
 			for _, name := range strings.Split(packageManagers, ",") {
-				name = strings.TrimSpace(strings.ToLower(name))
+				normalized := strings.TrimSpace(strings.ToLower(name))
 
-				if name != "" {
-					moduleNames = append(moduleNames, name)
+				if alias, ok := aliasMap[normalized]; ok {
+					normalized = alias
+				}
+
+				if normalized != "" {
+					moduleNames = append(moduleNames, normalized)
 				}
 			}
 		}
@@ -69,7 +79,7 @@ func init() {
 		&packageManagers,
 		"pm",
 		"",
-		"Comma-separated list of package managers to check (php,composer,node,npm)",
+		"Comma-separated list of package managers to check (php,composer,node,bun,pnpm,npm,yarn)",
 	)
 
 	checkCmd.Flags().UintVar(
