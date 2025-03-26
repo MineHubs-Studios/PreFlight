@@ -34,13 +34,11 @@ func FetchLatestTag(owner, repo string) (string, error) {
 		return "", fmt.Errorf("error fetching tags: %w", err)
 	}
 
-	defer func(Body io.ReadCloser) {
-		err := Body.Close()
-
-		if err != nil {
-			fmt.Printf("warning: error closing response body: %v\n", err)
+	defer func() {
+		if cerr := resp.Body.Close(); cerr != nil {
+			fmt.Printf("warning: error closing response body: %v\n", cerr)
 		}
-	}(resp.Body)
+	}()
 
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("GitHub API returned status: %s", resp.Status)
