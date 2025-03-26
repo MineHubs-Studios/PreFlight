@@ -35,8 +35,8 @@ func FetchLatestTag(owner, repo string) (string, error) {
 	}
 
 	defer func() {
-		if cerr := resp.Body.Close(); cerr != nil {
-			fmt.Printf("warning: error closing response body: %v\n", cerr)
+		if err := resp.Body.Close(); err != nil {
+			fmt.Printf("error closing response body: %v", err)
 		}
 	}()
 
