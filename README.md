@@ -14,7 +14,7 @@ It helps developers ensure that **all required tools and configurations** are se
 
 #### 🔍 Check Command (`preflight check`)
 - Ensures your system matches the project's expected setup.
-- Supports **Go, PHP, Composer, Node.js, npm, pnpm, and Yarn**.
+- Supports **Go, PHP, Composer, Node.js, bun, npm, pnpm, and Yarn**.
 - **EOL (End of Life) Detection** for **PHP and Node.js versions**.
 - Configurable **timeout** (`--timeout=<seconds>`) for dependency checks.
 - Supports **filtering by package manager** using `--pm=composer,php,node`.
