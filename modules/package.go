@@ -39,7 +39,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		if pm.LockFile != "" {
 			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) were found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, bun.lock, pnpm-lock.yaml or yarn.lock) were found.")
 		}
 
 		return errors, warnings, successes
@@ -70,8 +70,11 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		if valid, _ := utils.ValidateVersion(installedVersion, requiredVersion); !valid {
 			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion))
 		} else {
-			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING PNPM OVER NPM AND Yarn.
-			if len(successes) == 0 || cmd == "pnpm" || (cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
+			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING Bun FIRST, Yarn SECOND, PNPM THIRD AND NPM LAST.
+			if len(successes) == 0 || cmd == "bun" ||
+				(cmd == "yarn" && !strings.Contains(successes[0], "bun")) ||
+				(cmd == "pnpm" && !strings.Contains(successes[0], "bun") && !strings.Contains(successes[0], "yarn")) ||
+				(cmd == "npm" && !strings.Contains(successes[0], "bun") && !strings.Contains(successes[0], "yarn") && !strings.Contains(successes[0], "pnpm")) {
 				successes = []string{fmt.Sprintf("Installed %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion)}
 			}
 		}
@@ -117,14 +120,49 @@ func getInstalledPackages() (map[string]string, error) {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
+	validatePath := func(name string) (string, bool) {
+		if strings.Contains(name, "..") || (strings.Contains(name, "/") && !strings.HasPrefix(name, "@")) {
+			return "", false
+		}
+
+		var path string
+
+		if strings.HasPrefix(name, "@") {
+			parts := strings.SplitN(name, "/", 2)
+
+			if len(parts) != 2 || strings.Contains(parts[1], "..") || strings.Contains(parts[1], "/") {
+				return "", false
+			}
+
+			path = filepath.Join("node_modules", parts[0], parts[1], "package.json")
+		} else {
+			path = filepath.Join("node_modules", name, "package.json")
+		}
+
+		path = filepath.Clean(path)
+
+		if !strings.HasPrefix(path, filepath.Join("node_modules", "")) {
+			return "", false
+		}
+
+		return path, true
+	}
+
 	for dep := range installedPackages {
 		wg.Add(1)
 
 		go func(dep string) {
 			defer wg.Done()
-			path := filepath.Join("node_modules", dep, "package.json")
 
-			if data, err := os.ReadFile(path); err == nil {
+			path, valid := validatePath(dep)
+
+			if !valid {
+				return
+			}
+
+			data, err := os.ReadFile(path) //nolint:gosec
+
+			if err == nil {
 				var packageInfo struct {
 					Version string `json:"version"`
 				}
@@ -152,17 +190,31 @@ func getInstalledPackages() (map[string]string, error) {
 						if scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name)); err == nil {
 							for _, scopedEntry := range scopedEntries {
 								if scopedEntry.IsDir() {
-									packagePath := filepath.Join("node_modules", name, scopedEntry.Name(), "package.json")
+									scopedName := name + "/" + scopedEntry.Name()
 
-									if data, err := os.ReadFile(packagePath); err == nil {
+									if strings.Contains(name, "..") || strings.Contains(scopedEntry.Name(), "..") ||
+										strings.Contains(scopedEntry.Name(), "/") {
+										continue
+									}
+
+									packagePath := filepath.Join("node_modules", name, scopedEntry.Name(), "package.json")
+									packagePath = filepath.Clean(packagePath)
+
+									if !strings.HasPrefix(packagePath, filepath.Join("node_modules", "")) {
+										continue
+									}
+
+									data, err := os.ReadFile(packagePath)
+
+									if err == nil {
 										var packageInfo struct {
 											Version string `json:"version"`
 										}
 
 										if json.Unmarshal(data, &packageInfo) == nil && packageInfo.Version != "" {
-											installedPackages[name+"/"+scopedEntry.Name()] = packageInfo.Version
+											installedPackages[scopedName] = packageInfo.Version
 										} else {
-											installedPackages[name+"/"+scopedEntry.Name()] = "version unknown"
+											installedPackages[scopedName] = "version unknown"
 										}
 									}
 								}
@@ -170,9 +222,20 @@ func getInstalledPackages() (map[string]string, error) {
 						}
 					} else {
 						// DEFAULT PACKAGE HANDLING.
-						packagePath := filepath.Join("node_modules", name, "package.json")
+						if strings.Contains(name, "..") || strings.Contains(name, "/") {
+							continue
+						}
 
-						if data, err := os.ReadFile(packagePath); err == nil {
+						packagePath := filepath.Join("node_modules", name, "package.json")
+						packagePath = filepath.Clean(packagePath)
+
+						if !strings.HasPrefix(packagePath, filepath.Join("node_modules", "")) {
+							continue
+						}
+
+						data, err := os.ReadFile(packagePath)
+
+						if err == nil {
 							var packageInfo struct {
 								Version string `json:"version"`
 							}

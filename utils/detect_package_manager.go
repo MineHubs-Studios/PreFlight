@@ -18,6 +18,10 @@ type PackageManager struct {
 func DetectPackageManager(packageType string) PackageManager {
 	switch packageType {
 	case "package":
+		if _, err := os.Stat("bun.lock"); err == nil {
+			return PackageManager{Name: "Bun", Command: "bun", LockFile: "bun.lock"}
+		}
+
 		if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
 			return PackageManager{Name: "PNPM", Command: "pnpm", LockFile: "pnpm-lock.yaml"}
 		}

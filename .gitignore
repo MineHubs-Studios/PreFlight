@@ -4,14 +4,19 @@
 # JETBRAINS IDE GENERATED FILES.
 .idea/
 
-# BUILD FILES.
+# BUILD ARTIFACTS.
 *.exe
 *.exe~
-
-# GO SPECIFIC.
+*.dll
+*.so
+*.dylib
+*.a
 *.out
+*.o
+
+# GO WORKSPACE FILES.
 go.work
 go.work.sum
 
-# GO RELEASER.
+# GO RELEASER OUTPUT.
 dist/

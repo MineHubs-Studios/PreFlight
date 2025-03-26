@@ -23,7 +23,6 @@ linters:
     - nakedret       # DETECT NAKED RETURNS IN FUNCTIONS.
     - nilnil         # DETECTS COMPARISONS BETWEEN NIL AND NIL.
     - prealloc       # FIND SLICE DECLARATIONS THAT COULD BE PRE-ALLOCATED.
-    - revive         # FAST, CONFIGURABLE LINTER.
     - staticcheck    # COMPREHENSIVE STATIC ANALYSIS.
     - unparam        # FIND UNUSED FUNCTION PARAMETERS.
     - unused         # FIND UNUSED VARIABLES/CONSTANTS.

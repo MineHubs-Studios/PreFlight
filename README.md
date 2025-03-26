@@ -2,12 +2,6 @@
 
 A CLI tool to streamline project setup and ensure all dependencies are in check.
 
-> ⚠️ **Disclaimer:** PreFlight is currently in beta development, meaning that features, functionality, and stability are subject to change frequently. This project is highly experimental, and users should expect regular updates, modifications, and potential disruptions.
->
-> We appreciate any **feedback or bug reports** to help improve the project.
-
----
-
 ## 📌 Overview
 
 PreFlight is a powerful command-line tool designed to **validate, check, and fix** your project's environment and dependencies before starting development.
@@ -25,7 +19,7 @@ It helps developers ensure that **all required tools and configurations** are se
 - Configurable **timeout** (`--timeout=<seconds>`) for dependency checks.
 - Supports **filtering by package manager** using `--pm=composer,php,node`.
 
-#### 🔧 Fix Command (`preflight fix`)
+#### 🔧 Fix Command (`preflight fix`) **[Experimental, use at your own risk]**
 - Automatically **installs missing dependencies**.
 - Supports **Composer (PHP)** and package managers (**npm, pnpm, Yarn**).
 - Allows **force reinstallation** of dependencies using `--force`.
@@ -45,18 +39,20 @@ It helps developers ensure that **all required tools and configurations** are se
 - **Verifies lock files**:
 	- `composer.lock`
 	- `package-lock.json`
+    - `bun.lock`
 	- `pnpm-lock.yaml`
 	- `yarn.lock`
+    - `go.mod`
 
 ---
 
 ### ⚙️ **Customization & Flags**
 
-| Flag                | Description                                                   |
-|---------------------|---------------------------------------------------------------|
-| `--pm=<managers>`  | Filter by package manager (e.g., `--pm=php,composer,node`).   |
-| `--force`          | Force reinstall dependencies (for `fix` command).             |
-| `--timeout=<sec>`  | Set timeout for dependency checks (for `check` command).      |
+| Flag              | Description                                                 | Cmd   |
+|-------------------|-------------------------------------------------------------|-------|
+| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). | check |
+| `--timeout=<sec>` | Set timeout for dependency checks.                          | check |
+| `--force`         | Force reinstall dependencies.                               | fix   |
 
 ---
 

@@ -18,6 +18,11 @@ func FixDependencies(ctx context.Context, force bool) {
 		return
 	}
 
+	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Red + utils.WarningSign + " " +
+		"Be careful this is a experimental feature, which means is not stable yet! Continue on your own risk." + utils.Reset) {
+		return
+	}
+
 	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 Fixing dependencies  " + utils.Reset) {
 		return
 	}
@@ -37,14 +42,16 @@ func FixDependencies(ctx context.Context, force bool) {
 // fixComposerDependencies HANDLES INSTALLING MISSING Composer DEPENDENCIES.
 func fixComposerDependencies(ctx context.Context, force bool) {
 	version, err := modules.GetComposerVersion(ctx)
+
 	if err != nil {
-		fmt.Println("⚠️ Composer not found. Skipping PHP dependency fix.")
+		fmt.Println(utils.WarningSign + " Composer not found. Skipping PHP dependency fix.")
 		return
 	}
 
 	fmt.Printf("🛠 Composer found (version: %s). Running `composer install`...\n", version)
 
 	args := []string{"install"}
+
 	if force {
 		args = append(args, "--no-cache")
 	}
@@ -54,9 +61,9 @@ func fixComposerDependencies(ctx context.Context, force bool) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("❌ Composer installation failed: %v\n", err)
+		fmt.Printf(utils.CrossMark+" Composer installation failed: %v\n", err)
 	} else {
-		fmt.Println("✅ Composer dependencies fixed!")
+		fmt.Println(utils.CheckMark + " Composer dependencies fixed!")
 	}
 }
 
@@ -65,7 +72,7 @@ func fixJSDependencies(ctx context.Context, force bool) {
 	packageConfig := config.LoadPackageConfig()
 
 	if !packageConfig.HasJSON {
-		fmt.Println("⚠️ package.json not found. Skipping JavaScript dependency fix.")
+		fmt.Println(utils.WarningSign + " package.json not found. Skipping JavaScript dependency fix.")
 		return
 	}
 
@@ -74,6 +81,7 @@ func fixJSDependencies(ctx context.Context, force bool) {
 	fmt.Printf("🛠 Detected package manager: %s. Running `%s install`...\n", packageManager.Command, packageManager.Command)
 
 	args := []string{"install"}
+
 	if force {
 		args = append(args, "--force")
 	}
@@ -83,8 +91,8 @@ func fixJSDependencies(ctx context.Context, force bool) {
 	cmd.Stderr = os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("❌ %s installation failed: %v\n", packageManager.Command, err)
+		fmt.Printf(utils.CrossMark+" %s installation failed: %v\n", packageManager.Command, err)
 	} else {
-		fmt.Printf("✅ %s dependencies fixed!\n", packageManager.Command)
+		fmt.Printf(utils.CheckMark+" %s dependencies fixed!\n", packageManager.Command)
 	}
 }

@@ -36,6 +36,18 @@ const (
 	SortByName SortType = "name"
 )
 
+var defaultPriority = map[string]int{
+	"php":      1,
+	"composer": 2,
+	"node":     3,
+	"bun":      4,
+	"yarn":     5,
+	"pnpm":     6,
+	"npm":      7,
+}
+
+const fallbackPriority = 1000
+
 // RegisterModule REGISTERS A NEW MODULE IF IT DOESN'T ALREADY EXIST.
 func RegisterModule(module Module, moduleNames ...string) error {
 	modulesMutex.Lock()
@@ -54,13 +66,11 @@ func RegisterModule(module Module, moduleNames ...string) error {
 
 // registerSingleModule HELPER FUNCTION TO REGISTER A SINGLE MODULE.
 func registerSingleModule(module Module) error {
-	name := strings.ToLower(module.Name())
-
-	if _, exists := registeredModules[name]; exists {
-		return fmt.Errorf("modul med navnet '%s' er allerede registreret", module.Name())
+	if _, exists := registeredModules[module.Name()]; exists {
+		return fmt.Errorf("module with name '%s' is already registered", module.Name())
 	}
 
-	registeredModules[name] = module
+	registeredModules[module.Name()] = module
 	return nil
 }
 
@@ -72,12 +82,12 @@ func registerAllModules() error {
 		if _, exists := registeredModules[name]; !exists {
 			registeredModules[name] = mod
 		} else {
-			errs = append(errs, fmt.Sprintf("modul '%s' er allerede registreret", name))
+			errs = append(errs, fmt.Sprintf("module '%s' is already registered", name))
 		}
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("fejl ved registrering af moduler: %s", strings.Join(errs, "; "))
+		return fmt.Errorf("error registering modules: %s", strings.Join(errs, "; "))
 	}
 
 	return nil
@@ -88,24 +98,23 @@ func registerSpecificModules(moduleNames []string) error {
 	var errs []string
 
 	for _, name := range moduleNames {
-		normalizedName := strings.TrimSpace(strings.ToLower(name))
-		mod, exists := availableModules[normalizedName]
+		mod, exists := availableModules[name]
 
 		if !exists {
-			errs = append(errs, fmt.Sprintf("ukendt modul: %s", name))
+			errs = append(errs, fmt.Sprintf("unknown module: %s", name))
 			continue
 		}
 
-		if _, registered := registeredModules[normalizedName]; registered {
-			errs = append(errs, fmt.Sprintf("modul '%s' er allerede registreret", name))
+		if _, registered := registeredModules[name]; registered {
+			errs = append(errs, fmt.Sprintf("module with name '%s' is already registered", name))
 			continue
 		}
 
-		registeredModules[normalizedName] = mod
+		registeredModules[name] = mod
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("fejl ved registrering af moduler: %s", strings.Join(errs, "; "))
+		return fmt.Errorf("error registering modules: %s", strings.Join(errs, "; "))
 	}
 
 	return nil
@@ -131,74 +140,41 @@ func RegisterAvailableModule(name string, module Module) {
 		return
 	}
 
-	normalizedName := strings.ToLower(name)
-
 	modulesMutex.Lock()
 	defer modulesMutex.Unlock()
 
-	availableModules[normalizedName] = module
+	availableModules[name] = module
 }
 
 // SortModules SORTS MODULES BASED ON THE SPECIFIED SORT TYPE.
 func SortModules(modules []Module, sortType ...SortType) []Module {
-	// DEFAULT PRIORITY MAP FOR MODULES.
-	priority := map[string]int{
-		"php":      1,
-		"composer": 2,
-		"node":     3,
-		"npm":      4,
-		"yarn":     5,
-		"pnpm":     6,
-	}
-
-	// COPY MODULES ARRAY TO AVOID MODIFYING THE ORIGINAL.
 	sortedModules := make([]Module, len(modules))
 	copy(sortedModules, modules)
 
-	// DETERMINE THE SORTING TYPE.
 	actualSortType := SortByPriority
 
 	if len(sortType) > 0 {
 		actualSortType = sortType[0]
 	}
 
-	// SORT BY THE CHOSEN TYPE.
 	switch actualSortType {
 	case SortByName:
-		// SIMPLE ALPHABETICAL SORT BY NAME.
 		sort.SliceStable(sortedModules, func(i, j int) bool {
-			return strings.ToLower(sortedModules[i].Name()) < strings.ToLower(sortedModules[j].Name())
+			return sortedModules[i].Name() < sortedModules[j].Name()
 		})
-	default: // SortByPriority
-		// SORT BY PRIORITY.
+	default:
 		sort.SliceStable(sortedModules, func(i, j int) bool {
-			nameI := strings.ToLower(sortedModules[i].Name())
-			nameJ := strings.ToLower(sortedModules[j].Name())
-
-			priI := priority[nameI]
-
-			if priI == 0 {
-				priI = 1000
-			}
-
-			priJ := priority[nameJ]
-
-			if priJ == 0 {
-				priJ = 1000
-			}
-
-			return priI < priJ
+			return getPriority(sortedModules[i].Name()) < getPriority(sortedModules[j].Name())
 		})
 	}
 
 	return sortedModules
 }
 
-// Reset CLEARS ALL REGISTERED MODULES.
-/* func Reset() {
-	modulesMutex.Lock()
-	defer modulesMutex.Unlock()
+func getPriority(name string) int {
+	if p, ok := defaultPriority[strings.ToLower(name)]; ok {
+		return p
+	}
 
-	// EMPTY THE MAP BY CREATING A NEW ONE.
-	registeredModules = make(map[string]Module)
-} */
+	return fallbackPriority
+}
