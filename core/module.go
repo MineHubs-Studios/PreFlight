@@ -146,9 +146,10 @@ func SortModules(modules []Module, sortType ...SortType) []Module {
 		"php":      1,
 		"composer": 2,
 		"node":     3,
-		"npm":      4,
+		"bun":      4,
 		"yarn":     5,
 		"pnpm":     6,
+		"npm":      7,
 	}
 
 	// COPY MODULES ARRAY TO AVOID MODIFYING THE ORIGINAL.
@@ -193,12 +194,3 @@ func SortModules(modules []Module, sortType ...SortType) []Module {
 
 	return sortedModules
 }
-
-// Reset CLEARS ALL REGISTERED MODULES.
-/* func Reset() {
-	modulesMutex.Lock()
-	defer modulesMutex.Unlock()
-
-	// EMPTY THE MAP BY CREATING A NEW ONE.
-	registeredModules = make(map[string]Module)
-} */
