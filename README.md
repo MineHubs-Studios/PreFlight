@@ -19,7 +19,7 @@ It helps developers ensure that **all required tools and configurations** are se
 - Configurable **timeout** (`--timeout=<seconds>`) for dependency checks.
 - Supports **filtering by package manager** using `--pm=composer,php,node`.
 
-#### 🔧 Fix Command (`preflight fix`)
+#### 🔧 Fix Command (`preflight fix`) **[Experimental, use at your own risk]**
 - Automatically **installs missing dependencies**.
 - Supports **Composer (PHP)** and package managers (**npm, pnpm, Yarn**).
 - Allows **force reinstallation** of dependencies using `--force`.
