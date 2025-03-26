@@ -39,7 +39,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		if pm.LockFile != "" {
 			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
 		} else {
-			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, yarn.lock, pnpm-lock.yaml) were found.")
+			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, bun.lock, pnpm-lock.yaml or yarn.lock) were found.")
 		}
 
 		return errors, warnings, successes
@@ -70,8 +70,11 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		if valid, _ := utils.ValidateVersion(installedVersion, requiredVersion); !valid {
 			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion))
 		} else {
-			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING PNPM OVER NPM AND Yarn.
-			if len(successes) == 0 || cmd == "pnpm" || (cmd == "npm" && !strings.Contains(successes[0], "pnpm")) {
+			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING Bun FIRST, Yarn SECOND, PNPM THIRD AND NPM LAST.
+			if len(successes) == 0 || cmd == "bun" ||
+				(cmd == "yarn" && !strings.Contains(successes[0], "bun")) ||
+				(cmd == "pnpm" && !strings.Contains(successes[0], "bun") && !strings.Contains(successes[0], "yarn")) ||
+				(cmd == "npm" && !strings.Contains(successes[0], "bun") && !strings.Contains(successes[0], "yarn") && !strings.Contains(successes[0], "pnpm")) {
 				successes = []string{fmt.Sprintf("Installed %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion)}
 			}
 		}
