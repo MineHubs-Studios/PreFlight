@@ -14,20 +14,20 @@ It helps developers ensure that **all required tools and configurations** are se
 
 #### 🔍 Check Command (`preflight check`)
 - Ensures your system matches the project's expected setup.
-- Supports **Go, PHP, Composer, Node.js, npm, pnpm, and Yarn**.
+- Supports **Go, PHP, Composer, Node.js, Bun, NPM, PNPM, and Yarn**.
 - **EOL (End of Life) Detection** for **PHP and Node.js versions**.
 - Configurable **timeout** (`--timeout=<seconds>`) for dependency checks.
 - Supports **filtering by package manager** using `--pm=composer,php,node`.
 
 #### 🔧 Fix Command (`preflight fix`) **[Experimental, use at your own risk]**
 - Automatically **installs missing dependencies**.
-- Supports **Composer (PHP)** and package managers (**npm, pnpm, Yarn**).
+- Supports **Composer (PHP)** and package managers (**NPM, PNPM, Yarn**).
 - Allows **force reinstallation** of dependencies using `--force`.
 
 #### 📋 List Command (`preflight list`)
 - Displays all installed dependencies for:
 	- **Composer (PHP)**
-	- **npm, pnpm, Yarn (JavaScript)**
+	- **Bun, NPM, PNPM, Yarn (JavaScript and TypeScript)**
 	- **Go Modules**
 - Supports **filtering by package manager** using `--pm=node,composer`.
 
@@ -48,11 +48,11 @@ It helps developers ensure that **all required tools and configurations** are se
 
 ### ⚙️ **Customization & Flags**
 
-| Flag              | Description                                                 | Cmd   |
-|-------------------|-------------------------------------------------------------|-------|
-| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). | check |
-| `--timeout=<sec>` | Set timeout for dependency checks.                          | check |
-| `--force`         | Force reinstall dependencies.                               | fix   |
+| Flag              | Description                                                 | Cmd           |
+|-------------------|-------------------------------------------------------------|---------------|
+| `--pm=<managers>` | Filter by package manager (e.g., `--pm=php,composer,node`). | check<br>list |
+| `--timeout=<sec>` | Set timeout for dependency checks.                          | check         |
+| `--force`         | Force reinstall dependencies.                               | fix           |
 
 ---
 

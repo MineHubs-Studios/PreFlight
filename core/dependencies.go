@@ -16,22 +16,33 @@ type DependencyResult struct {
 type dependencyFetcher func() (string, []string, error)
 
 // GetAllDependencies COLLECTS DEPENDENCIES FROM SUPPORTED PACKAGE MANAGERS.
-func GetAllDependencies() DependencyResult {
+func GetAllDependencies(only ...string) DependencyResult {
+	allowed := make(map[string]bool)
+
+	for _, name := range only {
+		allowed[name] = true
+	}
+
 	result := DependencyResult{
 		Dependencies: make(map[string][]string),
 	}
 
-	fetchers := []dependencyFetcher{
-		fetchComposerDependencies,
-		fetchPackageDependencies,
-		fetchGoDependencies,
+	fetchers := map[string]dependencyFetcher{
+		"composer": fetchComposerDependencies,
+		"package":  fetchPackageDependencies,
+		"go":       fetchGoDependencies,
 	}
 
-	for _, fetch := range fetchers {
-		name, deps, err := fetch()
+	for name, fetch := range fetchers {
+		if len(allowed) > 0 && !allowed[name] {
+			continue
+		}
+
+		depName, deps, err := fetch()
+
 		if err == nil && len(deps) > 0 {
 			sort.Strings(deps)
-			result.Dependencies[name] = deps
+			result.Dependencies[depName] = deps
 		}
 	}
 
