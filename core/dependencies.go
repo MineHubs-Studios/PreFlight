@@ -7,130 +7,141 @@ import (
 	"strings"
 )
 
-// DependencyResult HOLDS DATA ABOUT ALL FOUND DEPENDENCIES.
+// DependencyResult HOLDS THE RESULT OF ALL FOUND DEPENDENCIES.
 type DependencyResult struct {
 	Dependencies map[string][]string
 }
 
-// GetAllDependencies COLLECTS ALL DEPENDENCIES BASED ON DETECTED PACKAGE MANAGERS.
-func GetAllDependencies() DependencyResult {
+// dependencyFetcher IS A FUNCTION SIGNATURE FOR FETCHING DEPENDENCIES.
+type dependencyFetcher func() (string, []string, error)
+
+// GetAllDependencies COLLECTS DEPENDENCIES FROM SUPPORTED PACKAGE MANAGERS.
+func GetAllDependencies(only ...string) DependencyResult {
+	allowed := make(map[string]bool)
+
+	for _, name := range only {
+		allowed[name] = true
+	}
+
 	result := DependencyResult{
 		Dependencies: make(map[string][]string),
 	}
 
-	// DETECT AND PROCESS COMPOSER DEPENDENCIES.
-	composerPM := utils.DetectPackageManager("composer")
-
-	if composerPM.LockFile != "" {
-		composerConfig := config.LoadComposerConfig()
-
-		if composerConfig.HasJSON && composerConfig.Error == nil {
-			composerDeps := append(composerConfig.Dependencies, composerConfig.DevDependencies...)
-
-			if len(composerDeps) > 0 {
-				sort.Strings(composerDeps)
-				result.Dependencies["composer"] = composerDeps
-			}
-		}
+	fetchers := map[string]dependencyFetcher{
+		"composer": fetchComposerDependencies,
+		"package":  fetchPackageDependencies,
+		"go":       fetchGoDependencies,
 	}
 
-	// DETECT AND PROCESS PACKAGE DEPENDENCIES (NPM, PNPM, Yarn).
-	packagePM := utils.DetectPackageManager("package")
-
-	if packagePM.LockFile != "" {
-		packageConfig := config.LoadPackageConfig()
-
-		if packageConfig.HasJSON && packageConfig.Error == nil {
-			allDeps := append(packageConfig.Dependencies, packageConfig.DevDependencies...)
-
-			if len(allDeps) > 0 {
-				sort.Strings(allDeps)
-				result.Dependencies[packagePM.Command] = allDeps
-			}
+	for name, fetch := range fetchers {
+		if len(allowed) > 0 && !allowed[name] {
+			continue
 		}
-	}
 
-	// DETECT AND PROCESS GO MODULE DEPENDENCIES
-	goPM := utils.DetectPackageManager("go")
+		depName, deps, err := fetch()
 
-	if goPM.LockFile != "" {
-		goConfig := config.LoadGoConfig()
-
-		if goConfig.Error == nil && len(goConfig.Modules) > 0 {
-			sort.Strings(goConfig.Modules)
-			result.Dependencies["go"] = goConfig.Modules
+		if err == nil && len(deps) > 0 {
+			sort.Strings(deps)
+			result.Dependencies[depName] = deps
 		}
 	}
 
 	return result
 }
 
+// fetchComposerDependencies FETCH Composer DEPENDENCIES.
+func fetchComposerDependencies() (string, []string, error) {
+	cfg := config.LoadComposerConfig()
+
+	if !cfg.HasJSON || cfg.Error != nil {
+		return "", nil, cfg.Error
+	}
+
+	if len(cfg.Dependencies)+len(cfg.DevDependencies) == 0 {
+		return "", nil, nil
+	}
+
+	deps := append(cfg.Dependencies, cfg.DevDependencies...)
+
+	return "composer", deps, nil
+}
+
+// fetchPackageDependencies FETCH Package DEPENDENCIES.
+func fetchPackageDependencies() (string, []string, error) {
+	cfg := config.LoadPackageConfig()
+
+	if !cfg.HasJSON || cfg.Error != nil {
+		return "", nil, cfg.Error
+	}
+
+	if len(cfg.Dependencies)+len(cfg.DevDependencies) == 0 {
+		return "", nil, nil
+	}
+
+	deps := append(cfg.Dependencies, cfg.DevDependencies...)
+
+	return "package", deps, nil
+}
+
+// fetchGoDependencies FETCH Go DEPENDENCIES.
+func fetchGoDependencies() (string, []string, error) {
+	cfg := config.LoadGoConfig()
+
+	if !cfg.HasMod || cfg.Error != nil || len(cfg.Modules) == 0 {
+		return "", nil, cfg.Error
+	}
+
+	return "go", cfg.Modules, nil
+}
+
 // PrintDependencies PRINTS THE FOUND DEPENDENCIES.
 func PrintDependencies(result DependencyResult) bool {
 	ow := utils.NewOutputWriter()
 
-	if !ow.Println(utils.Bold + utils.Blue + "\n╭─────────────────────────────────────────╮" + utils.Reset) {
-		return false
+	header := []string{
+		utils.Bold + utils.Blue + "\n╭─────────────────────────────────────────╮" + utils.Reset,
+		utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 Scanning project for dependencies  " + utils.Reset,
+		utils.Bold + utils.Blue + "╰─────────────────────────────────────────╯" + utils.Reset,
 	}
 
-	if !ow.Println(utils.Bold + utils.Blue + "│" + utils.Cyan + utils.Bold + "  🚀 Scanning project for dependencies  " + utils.Reset) {
-		return false
+	for _, line := range header {
+		if !ow.Println(line) {
+			return false
+		}
 	}
 
-	if !ow.Println(utils.Bold + utils.Blue + "╰─────────────────────────────────────────╯" + utils.Reset) {
-		return false
-	}
-
-	if !ow.PrintNewLines(1) {
-		return false
-	}
+	ow.PrintNewLines(1)
 
 	if len(result.Dependencies) == 0 {
-		if !ow.Println(utils.Bold + "📦 No Package Managers:" + utils.Reset) {
-			return false
-		}
-
-		if !ow.Println(utils.Red + "  " + utils.CrossMark + " No package managers detected in this project!" + utils.Reset) {
-			return false
-		}
-
+		ow.Println(utils.Bold + "📦 No Package Managers:" + utils.Reset)
+		ow.Println(utils.Red + "  " + utils.CrossMark + " No package managers detected in this project!" + utils.Reset)
 		return true
 	}
 
-	// SORT PACKAGE NAMES FOR CONSISTENT OUTPUT.
-	packageManagers := make([]string, 0, len(result.Dependencies))
+	// SORT FOR CONSISTENT OUTPUT.
+	pmNames := make([]string, 0, len(result.Dependencies))
 
-	for pm := range result.Dependencies {
-		packageManagers = append(packageManagers, pm)
+	for name := range result.Dependencies {
+		pmNames = append(pmNames, name)
 	}
 
-	sort.Strings(packageManagers)
+	sort.Strings(pmNames)
 
-	for _, pm := range packageManagers {
-		deps := result.Dependencies[pm]
+	for _, name := range pmNames {
+		deps := result.Dependencies[name]
+		displayName := strings.ToUpper(name[:1]) + name[1:]
 
-		// CONVERT TO A TITLE CASE FOR NICE FORMATTING (npm -> NPM, composer -> Composer)
-		displayName := strings.ToUpper(pm[:1]) + pm[1:]
+		ow.Printf("%s%s Dependencies:%s\n", utils.Bold, displayName, utils.Reset)
 
-		if !ow.Printf("%s%s Dependencies:%s\n", utils.Bold, displayName, utils.Reset) {
-			return false
-		}
-
-		if len(deps) > 0 {
-			for _, dep := range deps {
-				if !ow.Printf(utils.Green+" "+utils.CheckMark+" %s%s\n", dep, utils.Reset) {
-					return false
-				}
-			}
+		if len(deps) == 0 {
+			ow.Printf(utils.Red+" "+utils.CrossMark+" No %s dependencies found!%s\n", displayName, utils.Reset)
 		} else {
-			if !ow.Printf(utils.Red+" "+utils.CrossMark+" No %s dependencies found!%s\n", pm, utils.Reset) {
-				return false
+			for _, dep := range deps {
+				ow.Printf(utils.Green+" "+utils.CheckMark+" %s%s\n", dep, utils.Reset)
 			}
 		}
 
-		if !ow.Println("") {
-			return false
-		}
+		ow.Println("")
 	}
 
 	return true
