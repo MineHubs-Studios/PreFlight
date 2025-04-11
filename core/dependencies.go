@@ -80,7 +80,7 @@ func fetchPackageDependencies() (string, []string, error) {
 
 	deps := append(cfg.Dependencies, cfg.DevDependencies...)
 
-	return cfg.PackageManager.Command, deps, nil
+	return "package", deps, nil
 }
 
 // fetchGoDependencies FETCH Go DEPENDENCIES.
