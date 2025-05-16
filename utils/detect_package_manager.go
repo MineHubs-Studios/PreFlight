@@ -1,5 +1,7 @@
 package utils
 
+import "strings"
+
 // PackageManager represents a detected package manager.
 type PackageManager struct {
 	// Name of the package manager.
@@ -18,84 +20,72 @@ type PackageManager struct {
 	LockFileExists bool
 }
 
+// packageManagerConfig defines detection rules for a package manager.
+type packageManagerConfig struct {
+	name       string
+	command    string
+	configFile string
+	lockFile   string
+}
+
 // DetectPackageManager identifies which package manager should be used.
 func DetectPackageManager(packageType string) PackageManager {
-	switch packageType {
-	case "package":
-		configExists := FileExists("package.json")
+	configs := map[string]packageManagerConfig{
+		"package":  {"NPM", "npm", "package.json", "package-lock.json"},
+		"composer": {"Composer", "composer", "composer.json", "composer.lock"},
+		"go":       {"Go Modules", "go", "go.mod", "go.sum"},
+	}
 
-		if !configExists && !FileExists("bun.lock") && !FileExists("pnpm-lock.yaml") &&
-			!FileExists("yarn.lock") && !FileExists("package-lock.json") {
+	config, found := configs[packageType]
 
-			return PackageManager{
-				Name:             "NPM",
-				Command:          "npm",
-				LockFile:         "",
-				ConfigFileExists: false,
-				LockFileExists:   false,
-			}
-		}
-
-		if FileExists("bun.lock") {
-			return PackageManager{
-				Name:             "Bun",
-				Command:          "bun",
-				LockFile:         "bun.lock",
-				ConfigFileExists: configExists,
-				LockFileExists:   true,
-			}
-		}
-
-	case "composer":
-		configExists := FileExists("composer.json")
-		lockExists := FileExists("composer.lock")
-
-		if !configExists && !lockExists {
-			return PackageManager{
-				Name:             "Composer",
-				Command:          "composer",
-				LockFile:         "",
-				ConfigFileExists: false,
-				LockFileExists:   false,
-			}
-		}
-
+	if !found {
 		return PackageManager{
-			Name:             "Composer",
-			Command:          "composer",
-			LockFile:         "composer.lock",
-			ConfigFileExists: configExists,
-			LockFileExists:   lockExists,
-		}
-
-	case "go":
-		modExists := FileExists("go.mod")
-
-		if !modExists {
-			return PackageManager{
-				Name:             "Go Modules",
-				Command:          "go",
-				LockFile:         "",
-				ConfigFileExists: false,
-				LockFileExists:   false,
-			}
-		}
-
-		return PackageManager{
-			Name:             "Go Modules",
-			Command:          "go",
-			LockFile:         "go.mod",
-			ConfigFileExists: true,
-			LockFileExists:   FileExists("go.sum"),
+			Name:             "NPM",
+			Command:          "npm",
+			LockFile:         "",
+			ConfigFileExists: false,
+			LockFileExists:   false,
 		}
 	}
 
-	// DEFAULT FALLBACK.
+	configExists := FileExists(config.configFile)
+	lockExists := FileExists(config.lockFile)
+
+	if packageType == "package" {
+		alternatives := map[string]string{
+			"bun.lock":       "Bun",
+			"pnpm-lock.yaml": "PNPM",
+			"yarn.lock":      "Yarn",
+		}
+
+		for lockFile, name := range alternatives {
+			if FileExists(lockFile) {
+				return PackageManager{
+					Name:             name,
+					Command:          strings.ToLower(name),
+					LockFile:         lockFile,
+					ConfigFileExists: configExists,
+					LockFileExists:   true,
+				}
+			}
+		}
+	}
+
+	if !configExists && !lockExists {
+		return PackageManager{
+			Name:             config.name,
+			Command:          config.command,
+			LockFile:         "",
+			ConfigFileExists: false,
+			LockFileExists:   false,
+		}
+	}
+
 	return PackageManager{
-		Name:             "NPM",
-		Command:          "npm",
-		LockFile:         "",
-		ConfigFileExists: false,
-		LockFileExists:   false,
+		Name:             config.name,
+		Command:          config.command,
+		LockFile:         config.lockFile,
+		ConfigFileExists: configExists,
+		LockFileExists:   lockExists,
 	}
 }
