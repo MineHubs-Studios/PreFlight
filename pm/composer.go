@@ -32,10 +32,12 @@ func LoadComposerConfig() ComposerConfig {
 	composerConfig.HasJSON = composerConfig.PackageManager.ConfigFileExists
 	composerConfig.HasLock = composerConfig.PackageManager.LockFileExists
 
+	// Early return if not applicable.
 	if !composerConfig.HasJSON {
 		return composerConfig
 	}
 
+	// Read and parse composer.json.
 	file, err := os.ReadFile("composer.json")
 
 	if err != nil {
@@ -50,30 +52,38 @@ func LoadComposerConfig() ComposerConfig {
 		return composerConfig
 	}
 
-	composerConfig.Dependencies = make([]string, 0, len(data.Require))
-	composerConfig.PHPExtensions = make([]string, 0, len(data.Require))
+	// Extract information from parsed data.
+	parseComposerJSON(&composerConfig, &data)
 
+	return composerConfig
+}
+
+// parseComposerJSON extracts information from parsed composer.json
+func parseComposerJSON(config *ComposerConfig, data *ComposerJSON) {
+	config.Dependencies = make([]string, 0, len(data.Require))
+	config.PHPExtensions = make([]string, 0, len(data.Require))
+
+	// Categorize require entries into PHP version, extensions and dependencies.
 	for dep, version := range data.Require {
 		switch {
 		case dep == "php":
-			composerConfig.PHPVersion = version
+			config.PHPVersion = version
 		case strings.HasPrefix(dep, "ext-"):
-			composerConfig.PHPExtensions = append(composerConfig.PHPExtensions, strings.TrimPrefix(dep, "ext-"))
+			config.PHPExtensions = append(config.PHPExtensions, strings.TrimPrefix(dep, "ext-"))
 		default:
-			composerConfig.Dependencies = append(composerConfig.Dependencies, dep)
+			config.Dependencies = append(config.Dependencies, dep)
 		}
 	}
 
-	utils.SortStrings(composerConfig.PHPExtensions)
-	utils.SortStrings(composerConfig.Dependencies)
+	utils.SortStrings(config.PHPExtensions)
+	utils.SortStrings(config.Dependencies)
 
-	composerConfig.DevDependencies = make([]string, 0, len(data.RequireDev))
+	config.DevDependencies = make([]string, 0, len(data.RequireDev))
 
+	// Extract dev dependencies separately.
 	for devDep := range data.RequireDev {
-		composerConfig.DevDependencies = append(composerConfig.DevDependencies, devDep)
+		config.DevDependencies = append(config.DevDependencies, devDep)
 	}
 
-	utils.SortStrings(composerConfig.DevDependencies)
-
-	return composerConfig
+	utils.SortStrings(config.DevDependencies)
 }
