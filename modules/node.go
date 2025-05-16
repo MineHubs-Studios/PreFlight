@@ -39,23 +39,24 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 	// VALIDATE Node.js VERSION.
 	if packageConfig.NodeVersion != "" {
 		isValid, _ := utils.ValidateVersion(nodeVersion, packageConfig.NodeVersion)
-		eolVersions := []string{"10", "12", "14", "15", "16", "17", "18"}
 
-		feedback := fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion)
-		isWarning := false
-
-		for _, eolVersion := range eolVersions {
-			if strings.HasPrefix(nodeVersion, "v"+eolVersion+".") {
-				warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
-				isWarning = true
-				break
-			}
+		// use map for O(1) lookup instead of slice iteration
+		eolVersions := map[string]bool{
+			"10": true, "12": true, "14": true, "15": true,
+			"16": true, "17": true, "18": true,
 		}
 
-		if !isValid {
-			errors = append(errors, fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion))
-		} else if isWarning {
-			warnings = append(warnings, feedback)
+		feedback := fmt.Sprintf("Installed %sNode.js (%s ⟶ required %s).", utils.Reset, nodeVersion, packageConfig.NodeVersion)
+		versionPrefix := strings.TrimPrefix(strings.Split(nodeVersion, ".")[0], "v")
+
+		if eolVersions[versionPrefix] {
+			warnings = append(warnings, fmt.Sprintf("Installed %sNode.js (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, nodeVersion))
+
+			if isValid {
+				warnings = append(warnings, feedback)
+			}
+		} else if !isValid {
+			errors = append(errors, feedback)
 		} else {
 			successes = append(successes, feedback)
 		}

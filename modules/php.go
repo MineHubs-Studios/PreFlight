@@ -49,23 +49,22 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	// VALIDATE PHP VERSION.
 	if composerConfig.PHPVersion != "" {
 		isValid, _ := utils.ValidateVersion(phpVersion, composerConfig.PHPVersion)
-		eolVersions := []string{"7.4", "8.0"}
 
-		feedback := fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion)
-		isWarning := false
-
-		for _, eolVersion := range eolVersions {
-			if strings.HasPrefix(phpVersion, eolVersion+".") {
-				feedback = fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), Consider upgrading!", utils.Reset, phpVersion)
-				isWarning = true
-				break
-			}
+		eolVersions := map[string]bool{
+			"7.4": true, "8.0": true,
 		}
 
-		if !isValid {
+		feedback := fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion)
+		versionPrefix := strings.Split(phpVersion, ".")[0] + "." + strings.Split(phpVersion, ".")[1]
+
+		if eolVersions[versionPrefix] {
+			warnings = append(warnings, fmt.Sprintf("Installed %sPHP (%s ⟶ End-of-Life), Consider upgrading!", utils.Reset, phpVersion))
+
+			if isValid {
+				warnings = append(warnings, feedback)
+			}
+		} else if !isValid {
 			errors = append(errors, fmt.Sprintf("Installed %sPHP (%s ⟶ required %s), Built: (%s, %s).", utils.Reset, phpVersion, composerConfig.PHPVersion, buildDate, vcVersion))
-		} else if isWarning {
-			warnings = append(warnings, feedback)
 		} else {
 			successes = append(successes, feedback)
 		}
