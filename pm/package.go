@@ -27,7 +27,7 @@ type PackageConfig struct {
 	YarnVersion     string
 	Dependencies    []string
 	DevDependencies []string
-	HasJSON         bool
+	HasConfig       bool
 	Error           error
 }
 
@@ -36,10 +36,10 @@ func LoadPackageConfig() PackageConfig {
 	packageConfig := PackageConfig{}
 	packageConfig.PackageManager = utils.DetectPackageManager("package")
 
-	packageConfig.HasJSON = packageConfig.PackageManager.ConfigFileExists
+	packageConfig.HasConfig = packageConfig.PackageManager.ConfigFileExists
 
 	// Early return if not applicable.
-	if !packageConfig.HasJSON {
+	if !packageConfig.HasConfig {
 		return packageConfig
 	}
 

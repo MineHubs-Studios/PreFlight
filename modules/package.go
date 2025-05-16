@@ -29,7 +29,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 	packageConfig := pm.LoadPackageConfig()
 	pm := packageConfig.PackageManager
 
-	if !packageConfig.HasJSON {
+	if !packageConfig.HasConfig {
 		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
 			return nil, nil, nil
 		}

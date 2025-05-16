@@ -71,7 +71,7 @@ func fixComposerDependencies(ctx context.Context, force bool) {
 func fixJSDependencies(ctx context.Context, force bool) {
 	packageConfig := pm.LoadPackageConfig()
 
-	if !packageConfig.HasJSON {
+	if !packageConfig.HasConfig {
 		fmt.Println(utils.WarningSign + " package.json not found. Skipping JavaScript dependency fix.")
 		return
 	}

@@ -27,11 +27,11 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	composerConfig := pm.LoadComposerConfig()
 	pm := composerConfig.PackageManager
 
-	if pm.LockFile == "" && !composerConfig.HasJSON {
+	if pm.LockFile == "" && !composerConfig.HasConfig {
 		return nil, nil, nil
 	}
 
-	if !composerConfig.HasJSON {
+	if !composerConfig.HasConfig {
 		warnings = append(warnings, "composer.json not found.")
 
 		if pm.LockFile != "" {
@@ -50,7 +50,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 
 	successes = append(successes, fmt.Sprintf("Installed %sComposer (%s).", utils.Reset, composerVersion))
 
-	if !composerConfig.HasJSON && composerConfig.HasLock {
+	if !composerConfig.HasConfig && composerConfig.HasLock {
 		warnings = append(warnings, "composer.lock exists without composer.json. Consider including composer.json.")
 		return errors, warnings, successes
 	}

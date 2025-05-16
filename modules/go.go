@@ -15,16 +15,16 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
-// CheckRequirements VERIFIES Go CONFIGURATIONS AND DEPENDENCIES.
+// CheckRequirements verifies Go configurations and dependencies.
 func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
-	// CHECK IF CONTEXT IS CANCELED.
+	// Check if context is canceled.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
 	goVersion, err := getGoVersion(ctx)
 
-	// SKIP MODULE IF Go IS NOT INSTALLED.
+	// Skip this module if Go is not installed.
 	if err != nil {
 		return nil, nil, nil
 	}

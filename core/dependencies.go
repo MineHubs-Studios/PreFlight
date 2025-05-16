@@ -53,7 +53,7 @@ func GetAllDependencies(only ...string) DependencyResult {
 func fetchComposerDependencies() (string, []string, error) {
 	cfg := pm.LoadComposerConfig()
 
-	if !cfg.HasJSON || cfg.Error != nil {
+	if !cfg.HasConfig || cfg.Error != nil {
 		return "", nil, cfg.Error
 	}
 
@@ -70,7 +70,7 @@ func fetchComposerDependencies() (string, []string, error) {
 func fetchPackageDependencies() (string, []string, error) {
 	cfg := pm.LoadPackageConfig()
 
-	if !cfg.HasJSON || cfg.Error != nil {
+	if !cfg.HasConfig || cfg.Error != nil {
 		return "", nil, cfg.Error
 	}
 

@@ -19,7 +19,7 @@ type ComposerConfig struct {
 	PHPExtensions   []string
 	Dependencies    []string
 	DevDependencies []string
-	HasJSON         bool
+	HasConfig       bool
 	HasLock         bool
 	Error           error
 }
@@ -29,11 +29,11 @@ func LoadComposerConfig() ComposerConfig {
 	composerConfig := ComposerConfig{}
 	composerConfig.PackageManager = utils.DetectPackageManager("composer")
 
-	composerConfig.HasJSON = composerConfig.PackageManager.ConfigFileExists
+	composerConfig.HasConfig = composerConfig.PackageManager.ConfigFileExists
 	composerConfig.HasLock = composerConfig.PackageManager.LockFileExists
 
 	// Early return if not applicable.
-	if !composerConfig.HasJSON {
+	if !composerConfig.HasConfig {
 		return composerConfig
 	}
 
