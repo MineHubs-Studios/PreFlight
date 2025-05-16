@@ -1,4 +1,4 @@
-package config
+package pm
 
 import (
 	"PreFlight/utils"
@@ -31,14 +31,14 @@ type PackageConfig struct {
 	Error           error
 }
 
-// LoadPackageConfig PARSES package.json, LOCK FILES AND RETURNS PackageConfig.
+// LoadPackageConfig parses package.json, lock files and returns PackageConfig.
 func LoadPackageConfig() PackageConfig {
 	packageConfig := PackageConfig{}
 	packageConfig.PackageManager = utils.DetectPackageManager("package")
 
-	if _, err := os.Stat("package.json"); err == nil {
-		packageConfig.HasJSON = true
-	} else {
+	packageConfig.HasJSON = packageConfig.PackageManager.ConfigFileExists
+
+	if !packageConfig.HasJSON {
 		return packageConfig
 	}
 
@@ -67,11 +67,15 @@ func LoadPackageConfig() PackageConfig {
 		packageConfig.Dependencies = append(packageConfig.Dependencies, dep)
 	}
 
+	utils.SortStrings(packageConfig.Dependencies)
+
 	packageConfig.DevDependencies = make([]string, 0, len(data.DevDependencies))
 
 	for devDep := range data.DevDependencies {
 		packageConfig.DevDependencies = append(packageConfig.DevDependencies, devDep)
 	}
+
+	utils.SortStrings(packageConfig.DevDependencies)
 
 	return packageConfig
 }

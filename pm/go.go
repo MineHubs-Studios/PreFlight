@@ -1,4 +1,4 @@
-package config
+package pm
 
 import (
 	"PreFlight/utils"
@@ -15,16 +15,16 @@ type GoConfig struct {
 	Error          error
 }
 
+// LoadGoConfig parses go.mod and returns GoConfig.
 func LoadGoConfig() GoConfig {
 	var goConfig GoConfig
 	goConfig.PackageManager = utils.DetectPackageManager("go")
 
-	if goConfig.PackageManager.LockFile == "" {
-		goConfig.HasMod = false
+	goConfig.HasMod = goConfig.PackageManager.ConfigFileExists
+
+	if !goConfig.HasMod {
 		return goConfig
 	}
-
-	goConfig.HasMod = true
 
 	data, err := os.ReadFile("go.mod")
 
@@ -74,6 +74,8 @@ func LoadGoConfig() GoConfig {
 			}
 		}
 	}
+
+	utils.SortStrings(goConfig.Modules)
 
 	return goConfig
 }

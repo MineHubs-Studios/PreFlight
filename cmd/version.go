@@ -22,7 +22,7 @@ var versionCmd = &cobra.Command{
 
 		ow.PrintNewLines(1)
 		ow.Println(utils.Bold + utils.Cyan + "PreFlight - Version Information" + utils.Reset + utils.Bold)
-		ow.Println(utils.Border)
+		ow.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
 		// WAIT FOR ASYNC TAG FETCH.
 		<-done
@@ -37,7 +37,7 @@ var versionCmd = &cobra.Command{
 
 		ow.Printf("Go version:      %s\n", versionData.GoVersion)
 		ow.Printf("Platform:        %s\n", versionData.Platform)
-		ow.Println(utils.Border + utils.Reset)
+		ow.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	},
 }
 

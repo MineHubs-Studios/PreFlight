@@ -1,7 +1,7 @@
 package core
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"sort"
 	"strings"
@@ -51,7 +51,7 @@ func GetAllDependencies(only ...string) DependencyResult {
 
 // fetchComposerDependencies FETCH Composer DEPENDENCIES.
 func fetchComposerDependencies() (string, []string, error) {
-	cfg := config.LoadComposerConfig()
+	cfg := pm.LoadComposerConfig()
 
 	if !cfg.HasJSON || cfg.Error != nil {
 		return "", nil, cfg.Error
@@ -68,7 +68,7 @@ func fetchComposerDependencies() (string, []string, error) {
 
 // fetchPackageDependencies FETCH Package DEPENDENCIES.
 func fetchPackageDependencies() (string, []string, error) {
-	cfg := config.LoadPackageConfig()
+	cfg := pm.LoadPackageConfig()
 
 	if !cfg.HasJSON || cfg.Error != nil {
 		return "", nil, cfg.Error
@@ -85,7 +85,7 @@ func fetchPackageDependencies() (string, []string, error) {
 
 // fetchGoDependencies FETCH Go DEPENDENCIES.
 func fetchGoDependencies() (string, []string, error) {
-	cfg := config.LoadGoConfig()
+	cfg := pm.LoadGoConfig()
 
 	if !cfg.HasMod || cfg.Error != nil || len(cfg.Modules) == 0 {
 		return "", nil, cfg.Error

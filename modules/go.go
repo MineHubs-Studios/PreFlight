@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -29,7 +29,7 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 		return nil, nil, nil
 	}
 
-	goConfig := config.LoadGoConfig()
+	goConfig := pm.LoadGoConfig()
 
 	if !goConfig.HasMod {
 		return errors, warnings, successes

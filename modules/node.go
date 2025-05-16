@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -29,7 +29,7 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 		return nil, nil, nil
 	}
 
-	packageConfig := config.LoadPackageConfig()
+	packageConfig := pm.LoadPackageConfig()
 
 	if packageConfig.Error != nil {
 		warnings = append(warnings, packageConfig.Error.Error())

@@ -1,4 +1,4 @@
-package config
+package pm
 
 import (
 	"PreFlight/utils"
@@ -24,14 +24,15 @@ type ComposerConfig struct {
 	Error           error
 }
 
-// LoadComposerConfig PARSES composer.json, composer.lock, AND RETURNS ComposerConfig.
+// LoadComposerConfig parses composer.json, composer.lock and returns ComposerConfig.
 func LoadComposerConfig() ComposerConfig {
 	composerConfig := ComposerConfig{}
 	composerConfig.PackageManager = utils.DetectPackageManager("composer")
 
-	if _, err := os.Stat("composer.json"); err == nil {
-		composerConfig.HasJSON = true
-	} else {
+	composerConfig.HasJSON = composerConfig.PackageManager.ConfigFileExists
+	composerConfig.HasLock = composerConfig.PackageManager.LockFileExists
+
+	if !composerConfig.HasJSON {
 		return composerConfig
 	}
 
@@ -63,11 +64,16 @@ func LoadComposerConfig() ComposerConfig {
 		}
 	}
 
+	utils.SortStrings(composerConfig.PHPExtensions)
+	utils.SortStrings(composerConfig.Dependencies)
+
 	composerConfig.DevDependencies = make([]string, 0, len(data.RequireDev))
 
 	for devDep := range data.RequireDev {
 		composerConfig.DevDependencies = append(composerConfig.DevDependencies, devDep)
 	}
+
+	utils.SortStrings(composerConfig.DevDependencies)
 
 	return composerConfig
 }

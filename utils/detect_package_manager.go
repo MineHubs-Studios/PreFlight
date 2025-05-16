@@ -1,50 +1,101 @@
 package utils
 
-import "os"
-
-// PackageManager REPRESENTS A DETECTED PACKAGE MANAGER.
+// PackageManager represents a detected package manager.
 type PackageManager struct {
-	// Name OF THE PACKAGE MANAGER.
+	// Name of the package manager.
 	Name string
 
-	// Command TO EXECUTE THE PACKAGE MANAGER.
+	// Command to execute the package manager.
 	Command string
 
-	// LockFile ASSOCIATED WITH THE PACKAGE MANAGER.
+	// LockFile associated with the package manager.
 	LockFile string
+
+	// ConfigFileExists indicates if the main config file exists.
+	ConfigFileExists bool
+
+	// LockFileExists indicates if the lock file exists.
+	LockFileExists bool
 }
 
-// DetectPackageManager IDENTIFIES WHICH PACKAGE MANAGER SHOULD BE USED.
+// DetectPackageManager identifies which package manager should be used.
 func DetectPackageManager(packageType string) PackageManager {
 	switch packageType {
 	case "package":
-		if _, err := os.Stat("bun.lock"); err == nil {
-			return PackageManager{Name: "Bun", Command: "bun", LockFile: "bun.lock"}
+		configExists := FileExists("package.json")
+
+		if !configExists && !FileExists("bun.lock") && !FileExists("pnpm-lock.yaml") &&
+			!FileExists("yarn.lock") && !FileExists("package-lock.json") {
+
+			return PackageManager{
+				Name:             "NPM",
+				Command:          "npm",
+				LockFile:         "",
+				ConfigFileExists: false,
+				LockFileExists:   false,
+			}
 		}
 
-		if _, err := os.Stat("pnpm-lock.yaml"); err == nil {
-			return PackageManager{Name: "PNPM", Command: "pnpm", LockFile: "pnpm-lock.yaml"}
-		}
-
-		if _, err := os.Stat("yarn.lock"); err == nil {
-			return PackageManager{Name: "Yarn", Command: "yarn", LockFile: "yarn.lock"}
-		}
-
-		if _, err := os.Stat("package-lock.json"); err == nil {
-			return PackageManager{Name: "NPM", Command: "npm", LockFile: "package-lock.json"}
+		if FileExists("bun.lock") {
+			return PackageManager{
+				Name:             "Bun",
+				Command:          "bun",
+				LockFile:         "bun.lock",
+				ConfigFileExists: configExists,
+				LockFileExists:   true,
+			}
 		}
 
 	case "composer":
-		if _, err := os.Stat("composer.lock"); err == nil {
-			return PackageManager{Name: "Composer", Command: "composer", LockFile: "composer.lock"}
+		configExists := FileExists("composer.json")
+		lockExists := FileExists("composer.lock")
+
+		if !configExists && !lockExists {
+			return PackageManager{
+				Name:             "Composer",
+				Command:          "composer",
+				LockFile:         "",
+				ConfigFileExists: false,
+				LockFileExists:   false,
+			}
+		}
+
+		return PackageManager{
+			Name:             "Composer",
+			Command:          "composer",
+			LockFile:         "composer.lock",
+			ConfigFileExists: configExists,
+			LockFileExists:   lockExists,
 		}
 
 	case "go":
-		if _, err := os.Stat("go.mod"); err == nil {
-			return PackageManager{Name: "Go Modules", Command: "go", LockFile: "go.mod"}
+		modExists := FileExists("go.mod")
+
+		if !modExists {
+			return PackageManager{
+				Name:             "Go Modules",
+				Command:          "go",
+				LockFile:         "",
+				ConfigFileExists: false,
+				LockFileExists:   false,
+			}
+		}
+
+		return PackageManager{
+			Name:             "Go Modules",
+			Command:          "go",
+			LockFile:         "go.mod",
+			ConfigFileExists: true,
+			LockFileExists:   FileExists("go.sum"),
 		}
 	}
 
 	// DEFAULT FALLBACK.
-	return PackageManager{Name: "NPM", Command: "npm", LockFile: ""}
+	return PackageManager{
+		Name:             "NPM",
+		Command:          "npm",
+		LockFile:         "",
+		ConfigFileExists: false,
+		LockFileExists:   false,
+	}
 }

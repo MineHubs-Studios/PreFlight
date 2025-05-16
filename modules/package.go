@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"encoding/json"
@@ -26,7 +26,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		return nil, nil, nil
 	}
 
-	packageConfig := config.LoadPackageConfig()
+	packageConfig := pm.LoadPackageConfig()
 	pm := packageConfig.PackageManager
 
 	if !packageConfig.HasJSON {
@@ -102,7 +102,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 func getInstalledPackages() (map[string]string, error) {
 	installedPackages := make(map[string]string)
 
-	packageConfig := config.LoadPackageConfig()
+	packageConfig := pm.LoadPackageConfig()
 
 	if packageConfig.Error != nil {
 		return nil, packageConfig.Error

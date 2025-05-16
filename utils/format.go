@@ -16,6 +16,4 @@ const (
 	CheckMark   = "✓"
 	CrossMark   = "✗"
 	WarningSign = "⚠"
-
-	Border = "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 )

@@ -1,7 +1,7 @@
 package modules
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"encoding/json"
@@ -24,7 +24,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 		return nil, nil, nil
 	}
 
-	composerConfig := config.LoadComposerConfig()
+	composerConfig := pm.LoadComposerConfig()
 	pm := composerConfig.PackageManager
 
 	if pm.LockFile == "" && !composerConfig.HasJSON {

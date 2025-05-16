@@ -1,8 +1,8 @@
 package core
 
 import (
-	"PreFlight/config"
 	"PreFlight/modules"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -69,7 +69,7 @@ func fixComposerDependencies(ctx context.Context, force bool) {
 
 // fixJSDependencies HANDLES INSTALLING MISSING JavaScript/TypeScript DEPENDENCIES.
 func fixJSDependencies(ctx context.Context, force bool) {
-	packageConfig := config.LoadPackageConfig()
+	packageConfig := pm.LoadPackageConfig()
 
 	if !packageConfig.HasJSON {
 		fmt.Println(utils.WarningSign + " package.json not found. Skipping JavaScript dependency fix.")
