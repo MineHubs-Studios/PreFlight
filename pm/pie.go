@@ -25,8 +25,7 @@ type PIEConfig struct {
 }
 
 // LoadPIEConfig detects if PIE is installed and gets extension information.
-func LoadPIEConfig() PIEConfig {
-	ctx := context.Background()
+func LoadPIEConfig(ctx context.Context) PIEConfig {
 	pieConfig := PIEConfig{}
 
 	// Check if PIE is installed.
@@ -38,6 +37,7 @@ func LoadPIEConfig() PIEConfig {
 
 	// Find a PIE phar path.
 	pharPath, err := findPIEPharPath()
+
 	if err == nil {
 		pieConfig.PharPath = pharPath
 	} else {
@@ -47,11 +47,6 @@ func LoadPIEConfig() PIEConfig {
 
 	// Pass pharPath directly to extension reader.
 	extensionsMap := getPIEExtensions(ctx, pharPath)
-
-	if err != nil {
-		pieConfig.Error = fmt.Errorf("failed to retrieve PIE extensions: %w", err)
-		return pieConfig
-	}
 
 	for ext := range extensionsMap {
 		if ext == "" || ext == "Core" || ext == "standard" ||

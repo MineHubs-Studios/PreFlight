@@ -72,7 +72,7 @@ func (p PhpModule) CheckRequirements(ctx context.Context) (errors []string, warn
 	}
 
 	// Get PIE extensions if it's installed and a PHP version is 8.4+.
-	pieConfig := pm.LoadPIEConfig()
+	pieConfig := pm.LoadPIEConfig(ctx)
 
 	// Create extension source map.
 	extensionSources := make(map[string]string)
