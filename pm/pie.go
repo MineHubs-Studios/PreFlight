@@ -48,6 +48,11 @@ func LoadPIEConfig() PIEConfig {
 	// Pass pharPath directly to extension reader.
 	extensionsMap := getPIEExtensions(ctx, pharPath)
 
+	if err != nil {
+		pieConfig.Error = fmt.Errorf("failed to retrieve PIE extensions: %w", err)
+		return pieConfig
+	}
+
 	for ext := range extensionsMap {
 		if ext == "" || ext == "Core" || ext == "standard" ||
 			ext == "[PHP Modules]" || ext == "[Zend Modules]" {
@@ -115,7 +120,7 @@ func findPIEPharPath() (string, error) {
 func getPIEExtensions(ctx context.Context, pharPath string) map[string]struct{} {
 	extensions := make(map[string]struct{})
 
-	// pie -m
+	// Method 1: Try `pie -m` command.
 	if output, err := utils.RunCommand(ctx, "pie", "-m"); err == nil {
 		for _, ext := range strings.Split(output, "\n") {
 			if ext = strings.TrimSpace(ext); ext != "" {
@@ -124,12 +129,21 @@ func getPIEExtensions(ctx context.Context, pharPath string) map[string]struct{} 
 		}
 	}
 
+	// Skip if pharPath is not found.
 	if pharPath == "" {
 		return extensions
 	}
 
-	// metadata
-	metadataScript := fmt.Sprintf(`...`, pharPath)
+	// Method 2: Extract from phar metadata.
+	metadataScript := fmt.Sprintf(`
+		try {
+			$phar = new Phar('%s');
+			$meta = $phar->getMetadata();
+			if (isset($meta['extensions'])) echo implode("\n", $meta['extensions']);
+			if (isset($meta['xdebug']) || isset($meta['extensions']['xdebug'])) echo "\nxdebug";
+		} catch (Exception $e) { exit(1); }
+	`, pharPath)
+
 	if output, err := utils.RunCommand(ctx, "php", "-r", metadataScript); err == nil {
 		for _, ext := range strings.Split(output, "\n") {
 			if ext = strings.TrimSpace(ext); ext != "" {
@@ -138,8 +152,18 @@ func getPIEExtensions(ctx context.Context, pharPath string) map[string]struct{} 
 		}
 	}
 
-	// dir scan
-	scanScript := fmt.Sprintf(`...`, pharPath)
+	// Method 3: Scan PHAR content for directories like extensions/xdebug/.
+	scanScript := fmt.Sprintf(`
+		try {
+			$phar = new Phar('%s');
+			foreach (new RecursiveIteratorIterator($phar) as $file) {
+				$p = $file->getPathname();
+				if (strpos($p, 'xdebug') !== false) echo "xdebug\n";
+				if (preg_match('/extensions\/([a-zA-Z0-9_-]+)\//', $p, $m)) echo $m[1] . "\n";
+			}
+		} catch (Exception $e) { exit(1); }
+	`, pharPath)
+
 	if output, err := utils.RunCommand(ctx, "php", "-r", scanScript); err == nil {
 		for _, ext := range strings.Split(output, "\n") {
 			if ext = strings.TrimSpace(ext); ext != "" {
@@ -148,9 +172,17 @@ func getPIEExtensions(ctx context.Context, pharPath string) map[string]struct{} 
 		}
 	}
 
-	// common ext scan
+	// Method 4: Heuristic search for known extensions.
 	for _, ext := range []string{"xdebug", "opcache", "pcov"} {
-		checkScript := fmt.Sprintf(`...`, pharPath, ext, ext, ext)
+		checkScript := fmt.Sprintf(`
+			try {
+				$phar = new Phar('%s');
+				if ($phar->offsetExists('extensions/%s') ||
+					$phar->offsetExists('ext/%s') ||
+					$phar->offsetExists('%s')) echo "found";
+			} catch (Exception $e) { exit(1); }
+		`, pharPath, ext, ext, ext)
+
 		if output, err := utils.RunCommand(ctx, "php", "-r", checkScript); err == nil && strings.Contains(output, "found") {
 			extensions[ext] = struct{}{}
 		}
