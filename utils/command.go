@@ -17,7 +17,7 @@ func RunCommand(ctx context.Context, name string, args ...string) (string, error
 	cmd.Stderr = &stderr
 
 	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("failed to run '%s %s': %v — %s", name, strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
+		return "", fmt.Errorf("failed to run '%s %s': %w — %s", name, strings.Join(args, " "), err, strings.TrimSpace(stderr.String()))
 	}
 
 	return strings.TrimSpace(stdout.String()), nil
