@@ -29,14 +29,14 @@ func LoadPIEConfig(ctx context.Context) PIEConfig {
 	pieConfig := PIEConfig{}
 
 	// Check if PIE is installed.
-	pieConfig.IsInstalled = checkPIEInstalled()
+	pieConfig.IsInstalled = checkPIEInstalled(ctx)
 
 	if !pieConfig.IsInstalled {
 		return pieConfig
 	}
 
 	// Find a PIE phar path.
-	pharPath, err := findPIEPharPath()
+	pharPath, err := findPIEPharPath(ctx)
 
 	if err == nil {
 		pieConfig.PharPath = pharPath
@@ -63,9 +63,9 @@ func LoadPIEConfig(ctx context.Context) PIEConfig {
 }
 
 // checkPIEInstalled checks if PIE is installed.
-func checkPIEInstalled() bool {
+func checkPIEInstalled(ctx context.Context) bool {
 	// Check if the pie command exists.
-	if _, err := utils.RunCommand(context.Background(), "pie", "--version"); err == nil {
+	if _, err := utils.RunCommand(ctx, "pie", "--version"); err == nil {
 		return true
 	}
 
@@ -80,7 +80,7 @@ func checkPIEInstalled() bool {
 }
 
 // findPIEPharPath locates the pie.phar file.
-func findPIEPharPath() (string, error) {
+func findPIEPharPath(ctx context.Context) (string, error) {
 	// Check common paths.
 	for _, path := range piePharPaths {
 		if _, err := os.Stat(path); err == nil {
@@ -89,7 +89,7 @@ func findPIEPharPath() (string, error) {
 	}
 
 	// Try to find using 'which pie' command.
-	output, err := utils.RunCommand(context.Background(), "which", "pie")
+	output, err := utils.RunCommand(ctx, "which", "pie")
 
 	if err == nil && output != "" {
 		path := strings.TrimSpace(output)
