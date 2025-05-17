@@ -15,7 +15,7 @@ type Module interface {
 }
 
 var (
-	modulesMu      sync.RWMutex
+	modulesMutex   sync.RWMutex
 	registeredMods = make(map[string]Module)
 	availableMods  = make(map[string]Module)
 )
@@ -36,8 +36,8 @@ const defaultPriority = 1000
 
 // RegisterModule registers modules, accepts a module instance or module names.
 func RegisterModule(module Module, moduleNames ...string) error {
-	modulesMu.Lock()
-	defer modulesMu.Unlock()
+	modulesMutex.Lock()
+	defer modulesMutex.Unlock()
 
 	if module != nil {
 		if _, exists := registeredMods[module.Name()]; exists {
@@ -87,8 +87,8 @@ func RegisterModule(module Module, moduleNames ...string) error {
 
 // GetModules returns a copy of registered modules.
 func GetModules() []Module {
-	modulesMu.RLock()
-	defer modulesMu.RUnlock()
+	modulesMutex.RLock()
+	defer modulesMutex.RUnlock()
 
 	mods := make([]Module, 0, len(registeredMods))
 
@@ -105,9 +105,9 @@ func RegisterAvailableModule(name string, module Module) {
 		return
 	}
 
-	modulesMu.Lock()
+	modulesMutex.Lock()
 	availableMods[name] = module
-	modulesMu.Unlock()
+	modulesMutex.Unlock()
 }
 
 // SortModules sorts modules by priority or name.
