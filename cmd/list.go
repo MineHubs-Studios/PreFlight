@@ -8,7 +8,7 @@ import (
 
 var listPackageManagers string
 
-// listCmd REPRESENTS THE LIST COMMAND THAT DISPLAYS DEPENDENCIES.
+// listCmd represents the list command.
 var listCmd = &cobra.Command{
 	Use:     "list",
 	Short:   "List all required dependencies for this project",
@@ -24,8 +24,6 @@ var listCmd = &cobra.Command{
 			for _, p := range parts {
 				name := strings.ToLower(strings.TrimSpace(p))
 
-				// NORMALIZE VARIOUS JavaScript PACKAGE MANAGERS TO A GENERIC 'package' TYPE.
-				// THIS ENSURES CONSISTENT HANDLING FOR TOOLS LIKE Bun, NPM, PNPM AND Yarn.
 				switch name {
 				case "npm", "pnpm", "yarn", "bun":
 					name = "package"

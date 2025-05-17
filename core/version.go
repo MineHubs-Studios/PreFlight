@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// VersionData CONTAINS ALL VERSION-RELATED DATA.
+// VersionData contains all version-related data.
 type VersionData struct {
 	Version       string
 	LatestVersion string
@@ -18,12 +18,12 @@ type VersionData struct {
 	Error         error
 }
 
-// GitHubTag REPRESENT THE DATA STRUCTURE RETURNED BY GitHub API.
+// GitHubTag represent the data structure returned by GitHub API.
 type GitHubTag struct {
 	Name string `json:"name"`
 }
 
-// FetchLatestTag RETRIEVES THE LATEST GitHub TAG FOR A REPOSITORY.
+// FetchLatestTag retrieves the latest GitHub tag for a repository.
 func FetchLatestTag(owner, repo string) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", owner, repo)
 	client := &http.Client{Timeout: 5 * time.Second}
@@ -63,7 +63,7 @@ func FetchLatestTag(owner, repo string) (string, error) {
 	return tags[0].Name, nil
 }
 
-// GetVersionInfo ASYNCHRONOUSLY FETCHES VERSION METADATA.
+// GetVersionInfo asynchronously fetches version metadata.
 func GetVersionInfo(currentVersion, goVersion, platform string) (*VersionData, chan bool) {
 	info := &VersionData{
 		Version:   currentVersion,

@@ -8,173 +8,144 @@ import (
 	"sync"
 )
 
-// Module DEFINES THE CONTRACT FOR SYSTEM CHECK MODULES.
+// Module defines the contract for system check modules.
 type Module interface {
 	Name() string
 	CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string)
 }
 
 var (
-	// modulesMutex PROTECTS registeredModules AND availableModules FROM CONCURRENT MODIFICATIONS.
-	modulesMutex sync.RWMutex
-
-	// registeredModules CONTAINS THE ACTIVE MODULES.
-	registeredModules = make(map[string]Module)
-
-	// availableModules CONTAINS ALL KNOWN MODULES THAT ARE REGISTERED.
-	availableModules = make(map[string]Module)
+	modulesMutex   sync.RWMutex
+	registeredMods = make(map[string]Module)
+	availableMods  = make(map[string]Module)
 )
 
-// SortType DEFINES THE SORTING METHOD TO BE APPLIED TO MODULES.
 type SortType string
 
 const (
-	// SortByPriority SORTS MODULES BASED ON A PREDEFINED PRIORITY ORDER.
 	SortByPriority SortType = "priority"
-
-	// SortByName SORTS MODULES ALPHABETICALLY BY NAME.
-	SortByName SortType = "name"
+	SortByName     SortType = "name"
 )
 
-var defaultPriority = map[string]int{
-	"php":      1,
-	"composer": 2,
-	"node":     3,
-	"bun":      4,
-	"yarn":     5,
-	"pnpm":     6,
-	"npm":      7,
+var priorities = map[string]int{
+	"php": 1, "composer": 2, "node": 3,
+	"bun": 4, "yarn": 5, "pnpm": 6, "npm": 7,
 }
 
-const fallbackPriority = 1000
+const defaultPriority = 1000
 
-// RegisterModule REGISTERS A NEW MODULE IF IT DOESN'T ALREADY EXIST.
+// RegisterModule registers modules, accepts a module instance or module names.
 func RegisterModule(module Module, moduleNames ...string) error {
 	modulesMutex.Lock()
 	defer modulesMutex.Unlock()
 
 	if module != nil {
-		return registerSingleModule(module)
+		if _, exists := registeredMods[module.Name()]; exists {
+			return fmt.Errorf("module '%s' is already registered", module.Name())
+		}
+		registeredMods[module.Name()] = module
+		return nil
 	}
+
+	var errs []string
 
 	if len(moduleNames) == 0 {
-		return registerAllModules()
-	}
+		// Register all available modules.
+		for name, mod := range availableMods {
+			if _, exists := registeredMods[name]; exists {
+				errs = append(errs, fmt.Sprintf("module '%s' is already registered", name))
+				continue
+			}
 
-	return registerSpecificModules(moduleNames)
-}
+			registeredMods[name] = mod
+		}
+	} else {
+		// Register specific modules.
+		for _, name := range moduleNames {
+			mod, exists := availableMods[name]
 
-// registerSingleModule HELPER FUNCTION TO REGISTER A SINGLE MODULE.
-func registerSingleModule(module Module) error {
-	if _, exists := registeredModules[module.Name()]; exists {
-		return fmt.Errorf("module with name '%s' is already registered", module.Name())
-	}
+			if !exists {
+				errs = append(errs, fmt.Sprintf("unknown module: %s", name))
+				continue
+			}
 
-	registeredModules[module.Name()] = module
-	return nil
-}
+			if _, registered := registeredMods[name]; registered {
+				errs = append(errs, fmt.Sprintf("module '%s' is already registered", name))
+				continue
+			}
 
-// registerAllModules HELPER FUNCTION TO REGISTER ALL AVAILABLE MODULES.
-func registerAllModules() error {
-	var errs []string
-
-	for name, mod := range availableModules {
-		if _, exists := registeredModules[name]; !exists {
-			registeredModules[name] = mod
-		} else {
-			errs = append(errs, fmt.Sprintf("module '%s' is already registered", name))
+			registeredMods[name] = mod
 		}
 	}
 
 	if len(errs) > 0 {
-		return fmt.Errorf("error registering modules: %s", strings.Join(errs, "; "))
+		return fmt.Errorf("registration errors: %s", strings.Join(errs, "; "))
 	}
 
 	return nil
 }
 
-// registerSpecificModules HELPER FUNCTION TO REGISTER SPECIFIC MODULES BY NAME.
-func registerSpecificModules(moduleNames []string) error {
-	var errs []string
-
-	for _, name := range moduleNames {
-		mod, exists := availableModules[name]
-
-		if !exists {
-			errs = append(errs, fmt.Sprintf("unknown module: %s", name))
-			continue
-		}
-
-		if _, registered := registeredModules[name]; registered {
-			errs = append(errs, fmt.Sprintf("module with name '%s' is already registered", name))
-			continue
-		}
-
-		registeredModules[name] = mod
-	}
-
-	if len(errs) > 0 {
-		return fmt.Errorf("error registering modules: %s", strings.Join(errs, "; "))
-	}
-
-	return nil
-}
-
-// GetModules RETURNS A COPY OF THE REGISTERED MODULES.
+// GetModules returns a copy of registered modules.
 func GetModules() []Module {
 	modulesMutex.RLock()
 	defer modulesMutex.RUnlock()
 
-	modules := make([]Module, 0, len(registeredModules))
+	mods := make([]Module, 0, len(registeredMods))
 
-	for _, module := range registeredModules {
-		modules = append(modules, module)
+	for _, m := range registeredMods {
+		mods = append(mods, m)
 	}
 
-	return modules
+	return mods
 }
 
-// RegisterAvailableModule ADDS A MODULE TO THE LIST OF AVAILABLE MODULES.
+// RegisterAvailableModule adds a module to available modules.
 func RegisterAvailableModule(name string, module Module) {
 	if module == nil {
 		return
 	}
 
 	modulesMutex.Lock()
-	defer modulesMutex.Unlock()
-
-	availableModules[name] = module
+	availableMods[name] = module
+	modulesMutex.Unlock()
 }
 
-// SortModules SORTS MODULES BASED ON THE SPECIFIED SORT TYPE.
+// SortModules sorts modules by priority or name.
 func SortModules(modules []Module, sortType ...SortType) []Module {
-	sortedModules := make([]Module, len(modules))
-	copy(sortedModules, modules)
+	if len(modules) <= 1 {
+		return modules
+	}
 
-	actualSortType := SortByPriority
+	result := make([]Module, len(modules))
+	copy(result, modules)
+
+	st := SortByPriority
 
 	if len(sortType) > 0 {
-		actualSortType = sortType[0]
+		st = sortType[0]
 	}
 
-	switch actualSortType {
-	case SortByName:
-		sort.SliceStable(sortedModules, func(i, j int) bool {
-			return sortedModules[i].Name() < sortedModules[j].Name()
+	if st == SortByName {
+		sort.SliceStable(result, func(i, j int) bool {
+			return result[i].Name() < result[j].Name()
 		})
-	default:
-		sort.SliceStable(sortedModules, func(i, j int) bool {
-			return getPriority(sortedModules[i].Name()) < getPriority(sortedModules[j].Name())
+	} else {
+		sort.SliceStable(result, func(i, j int) bool {
+			pi, ok := priorities[strings.ToLower(result[i].Name())]
+
+			if !ok {
+				pi = defaultPriority
+			}
+
+			pj, ok := priorities[strings.ToLower(result[j].Name())]
+
+			if !ok {
+				pj = defaultPriority
+			}
+
+			return pi < pj
 		})
 	}
 
-	return sortedModules
-}
-
-func getPriority(name string) int {
-	if p, ok := defaultPriority[strings.ToLower(name)]; ok {
-		return p
-	}
-
-	return fallbackPriority
+	return result
 }

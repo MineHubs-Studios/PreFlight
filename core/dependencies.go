@@ -1,21 +1,21 @@
 package core
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"sort"
 	"strings"
 )
 
-// DependencyResult HOLDS THE RESULT OF ALL FOUND DEPENDENCIES.
+// DependencyResult Holds the result of all found dependencies.
 type DependencyResult struct {
 	Dependencies map[string][]string
 }
 
-// dependencyFetcher IS A FUNCTION SIGNATURE FOR FETCHING DEPENDENCIES.
+// dependencyFetcher is a function signature for fetching dependencies.
 type dependencyFetcher func() (string, []string, error)
 
-// GetAllDependencies COLLECTS DEPENDENCIES FROM SUPPORTED PACKAGE MANAGERS.
+// GetAllDependencies collects dependencies from supported package managers.
 func GetAllDependencies(only ...string) DependencyResult {
 	allowed := make(map[string]bool)
 
@@ -49,11 +49,11 @@ func GetAllDependencies(only ...string) DependencyResult {
 	return result
 }
 
-// fetchComposerDependencies FETCH Composer DEPENDENCIES.
+// fetchComposerDependencies Fetch composer dependencies.
 func fetchComposerDependencies() (string, []string, error) {
-	cfg := config.LoadComposerConfig()
+	cfg := pm.LoadComposerConfig()
 
-	if !cfg.HasJSON || cfg.Error != nil {
+	if !cfg.HasConfig || cfg.Error != nil {
 		return "", nil, cfg.Error
 	}
 
@@ -66,11 +66,11 @@ func fetchComposerDependencies() (string, []string, error) {
 	return "composer", deps, nil
 }
 
-// fetchPackageDependencies FETCH Package DEPENDENCIES.
+// fetchPackageDependencies Fetch Package dependencies.
 func fetchPackageDependencies() (string, []string, error) {
-	cfg := config.LoadPackageConfig()
+	cfg := pm.LoadPackageConfig()
 
-	if !cfg.HasJSON || cfg.Error != nil {
+	if !cfg.HasConfig || cfg.Error != nil {
 		return "", nil, cfg.Error
 	}
 
@@ -83,9 +83,9 @@ func fetchPackageDependencies() (string, []string, error) {
 	return "package", deps, nil
 }
 
-// fetchGoDependencies FETCH Go DEPENDENCIES.
+// fetchGoDependencies Fetch Go dependencies.
 func fetchGoDependencies() (string, []string, error) {
-	cfg := config.LoadGoConfig()
+	cfg := pm.LoadGoConfig()
 
 	if !cfg.HasMod || cfg.Error != nil || len(cfg.Modules) == 0 {
 		return "", nil, cfg.Error
@@ -94,7 +94,7 @@ func fetchGoDependencies() (string, []string, error) {
 	return "go", cfg.Modules, nil
 }
 
-// PrintDependencies PRINTS THE FOUND DEPENDENCIES.
+// PrintDependencies prints the found dependencies.
 func PrintDependencies(result DependencyResult) bool {
 	ow := utils.NewOutputWriter()
 
@@ -118,7 +118,7 @@ func PrintDependencies(result DependencyResult) bool {
 		return true
 	}
 
-	// SORT FOR CONSISTENT OUTPUT.
+	// Sort for consistent output.
 	pmNames := make([]string, 0, len(result.Dependencies))
 
 	for name := range result.Dependencies {

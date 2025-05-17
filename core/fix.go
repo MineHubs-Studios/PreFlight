@@ -1,8 +1,8 @@
 package core
 
 import (
-	"PreFlight/config"
 	"PreFlight/modules"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"fmt"
@@ -10,7 +10,7 @@ import (
 	"os/exec"
 )
 
-// FixDependencies INSTALL MISSING DEPENDENCIES FOR PHP (Composer) AND JS (NPM).
+// FixDependencies install missing dependencies for the project.
 func FixDependencies(ctx context.Context, force bool) {
 	ow := utils.NewOutputWriter()
 
@@ -39,7 +39,7 @@ func FixDependencies(ctx context.Context, force bool) {
 	fixJSDependencies(ctx, force)
 }
 
-// fixComposerDependencies HANDLES INSTALLING MISSING Composer DEPENDENCIES.
+// fixComposerDependencies Handles installing missing PHP dependencies.
 func fixComposerDependencies(ctx context.Context, force bool) {
 	version, err := modules.GetComposerVersion(ctx)
 
@@ -67,11 +67,11 @@ func fixComposerDependencies(ctx context.Context, force bool) {
 	}
 }
 
-// fixJSDependencies HANDLES INSTALLING MISSING JavaScript/TypeScript DEPENDENCIES.
+// fixJSDependencies Handles installing missing JavaScript dependencies.
 func fixJSDependencies(ctx context.Context, force bool) {
-	packageConfig := config.LoadPackageConfig()
+	packageConfig := pm.LoadPackageConfig()
 
-	if !packageConfig.HasJSON {
+	if !packageConfig.HasConfig {
 		fmt.Println(utils.WarningSign + " package.json not found. Skipping JavaScript dependency fix.")
 		return
 	}

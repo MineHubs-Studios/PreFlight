@@ -16,11 +16,12 @@ var (
 	timeoutSeconds  uint
 )
 
+// checkCmd represents the check command.
 var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Checks if all required dependencies are installed",
 	Run: func(_ *cobra.Command, _ []string) {
-		// REGISTER ALL AVAILABLE MODULES.
+		// Register available modules.
 		availableModules := map[string]core.Module{
 			"php":      modules.PhpModule{},
 			"composer": modules.ComposerModule{},
@@ -40,7 +41,7 @@ var checkCmd = &cobra.Command{
 			"bun":  "package",
 		}
 
-		// PROCESS REQUESTED MODULES.
+		// Process requested modules.
 		var moduleNames []string
 
 		if packageManagers != "" {
@@ -57,24 +58,22 @@ var checkCmd = &cobra.Command{
 			}
 		}
 
-		// REGISTER REQUESTED MODULES.
+		// Register requested modules.
 		if err := core.RegisterModule(nil, moduleNames...); err != nil {
 			fmt.Printf(utils.Red+"Failed to register modules: %v\n", err)
 			return
 		}
 
-		// SETUP CONTEXT WITH TIMEOUT FROM FLAG.
+		// Setup context with timeout from a flag.
 		timeout := time.Duration(timeoutSeconds) * time.Second
 		ctx, cancel := context.WithTimeout(context.Background(), timeout)
 		defer cancel()
 
-		// RUN THE CHECKS.
 		core.RunChecks(ctx)
 	},
 }
 
 func init() {
-	// DEFINE FLAGS FOR CHECK COMMAND.
 	checkCmd.Flags().StringVar(
 		&packageManagers,
 		"pm",

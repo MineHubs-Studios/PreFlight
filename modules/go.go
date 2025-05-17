@@ -1,11 +1,10 @@
 package modules
 
 import (
-	"PreFlight/config"
+	"PreFlight/pm"
 	"PreFlight/utils"
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
@@ -15,21 +14,21 @@ func (g GoModule) Name() string {
 	return "Go"
 }
 
-// CheckRequirements VERIFIES Go CONFIGURATIONS AND DEPENDENCIES.
+// CheckRequirements verifies Go configurations and dependencies.
 func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
-	// CHECK IF CONTEXT IS CANCELED.
+	// Check if context is canceled.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
 	goVersion, err := getGoVersion(ctx)
 
-	// SKIP MODULE IF Go IS NOT INSTALLED.
+	// Skip this module if Go is not installed.
 	if err != nil {
 		return nil, nil, nil
 	}
 
-	goConfig := config.LoadGoConfig()
+	goConfig := pm.LoadGoConfig()
 
 	if !goConfig.HasMod {
 		return errors, warnings, successes
@@ -42,26 +41,27 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	successes = append(successes, "go.mod found.")
 
-	// VALIDATE Go VERSION.
+	// Validate Go version.
 	if goConfig.GoVersion != "" {
 		isValid, _ := utils.ValidateVersion(goVersion, goConfig.GoVersion)
-		eolVersions := []string{"1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18", "1.19", "1.20", "1.21", "1.22"}
 
-		feedback := fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion)
-		isWarning := false
-
-		for _, eolVersion := range eolVersions {
-			if strings.HasPrefix(goVersion, eolVersion+".") {
-				warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
-				isWarning = true
-				break
-			}
+		eolVersions := map[string]bool{
+			"1.12": true, "1.13": true, "1.14": true, "1.15": true,
+			"1.16": true, "1.17": true, "1.18": true, "1.19": true,
+			"1.20": true, "1.21": true, "1.22": true,
 		}
 
-		if !isValid {
-			errors = append(errors, fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion))
-		} else if isWarning {
-			warnings = append(warnings, feedback)
+		feedback := fmt.Sprintf("Installed %sGo (%s ⟶ required %s).", utils.Reset, goVersion, goConfig.GoVersion)
+		versionPrefix := strings.Split(goVersion, ".")[0] + "." + strings.Split(goVersion, ".")[1]
+
+		if eolVersions[versionPrefix] {
+			warnings = append(warnings, fmt.Sprintf("Installed %sGo (%s ⟶ End-of-Life), consider upgrading!", utils.Reset, goVersion))
+
+			if isValid {
+				warnings = append(warnings, feedback)
+			}
+		} else if !isValid {
+			errors = append(errors, feedback)
 		} else {
 			successes = append(successes, feedback)
 		}
@@ -82,16 +82,15 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 	return errors, warnings, successes
 }
 
-// getGoVersion RETRIEVES THE INSTALLED Go VERSION.
+// getGoVersion retrieves the installed Go version.
 func getGoVersion(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "go", "version")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "go", "version")
 
 	if err != nil {
 		return "", err
 	}
 
-	versionOutput := strings.TrimSpace(string(output))
+	versionOutput := strings.TrimSpace(output)
 	parts := strings.Split(versionOutput, " ")
 
 	if len(parts) >= 3 {
@@ -101,18 +100,17 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unexpected go version format: %s", versionOutput)
 }
 
-// getInstalledModules RETRIEVES THE INSTALLED Go MODULES.
+// getInstalledModules retrieves the installed Go modules.
 func getInstalledModules(ctx context.Context) map[string]struct{} {
 	modules := make(map[string]struct{})
 
-	cmd := exec.CommandContext(ctx, "go", "list", "-m", "all")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "go", "list", "-m", "all")
 
 	if err != nil {
 		return modules
 	}
 
-	for _, line := range strings.Split(string(output), "\n") {
+	for _, line := range strings.Split(output, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
 			fields := strings.Fields(trimmed)
 

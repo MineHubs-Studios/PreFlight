@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	// Version SPECIFY THE CURRENT VERSION OF PreFlight.
-	Version = "1.0.0"
+	Version = "1.2.0"
 )
 
+// versionCmd represents the version command.
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Shows PreFlight version information",
@@ -22,9 +22,9 @@ var versionCmd = &cobra.Command{
 
 		ow.PrintNewLines(1)
 		ow.Println(utils.Bold + utils.Cyan + "PreFlight - Version Information" + utils.Reset + utils.Bold)
-		ow.Println(utils.Border)
+		ow.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-		// WAIT FOR ASYNC TAG FETCH.
+		// Wait for async tag fetch.
 		<-done
 
 		ow.Printf("Version:         %s\n", versionData.Version)
@@ -37,7 +37,7 @@ var versionCmd = &cobra.Command{
 
 		ow.Printf("Go version:      %s\n", versionData.GoVersion)
 		ow.Printf("Platform:        %s\n", versionData.Platform)
-		ow.Println(utils.Border + utils.Reset)
+		ow.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 	},
 }
 

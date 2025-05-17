@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-// rootCmd REPRESENTS THE BASE COMMAND WHEN THE PROGRAM IS EXECUTED WITHOUT SUBCOMMANDS.
+// rootCmd represents the base command when called without any subcommands.
 var rootCmd = &cobra.Command{
 	Use:   "PreFlight",
 	Short: "PreFlight is a CLI tool for checking project dependencies",
@@ -20,7 +20,7 @@ It supports multiple package managers such as composer, npm, pnpm and yarn.`,
 	SilenceUsage:  true,
 }
 
-// Execute ADDS ALL CHILD COMMANDS TO THE ROOT COMMAND AND SETS FLAGS APPROPRIATELY.
+// Execute adds all child commands to the root command and sets flags appropriately.
 func Execute() error {
 	if err := rootCmd.Execute(); err != nil {
 		_, err := fmt.Fprintf(os.Stderr, "Error during execution: %s\n", err)
@@ -35,8 +35,7 @@ func Execute() error {
 	return nil
 }
 
-// init REGISTERS FLAGS FOR THE ROOT COMMAND.
 func init() {
-	// ENABLE SHELL COMPLETION.
+	// Enable shell completion.
 	rootCmd.CompletionOptions.DisableDefaultCmd = false
 }

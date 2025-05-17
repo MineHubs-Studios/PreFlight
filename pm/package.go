@@ -1,4 +1,4 @@
-package config
+package pm
 
 import (
 	"PreFlight/utils"
@@ -27,21 +27,23 @@ type PackageConfig struct {
 	YarnVersion     string
 	Dependencies    []string
 	DevDependencies []string
-	HasJSON         bool
+	HasConfig       bool
 	Error           error
 }
 
-// LoadPackageConfig PARSES package.json, LOCK FILES AND RETURNS PackageConfig.
+// LoadPackageConfig parses package.json, lock files and returns PackageConfig.
 func LoadPackageConfig() PackageConfig {
 	packageConfig := PackageConfig{}
 	packageConfig.PackageManager = utils.DetectPackageManager("package")
 
-	if _, err := os.Stat("package.json"); err == nil {
-		packageConfig.HasJSON = true
-	} else {
+	packageConfig.HasConfig = packageConfig.PackageManager.ConfigFileExists
+
+	// Early return if not applicable.
+	if !packageConfig.HasConfig {
 		return packageConfig
 	}
 
+	// Read and parse package.json.
 	file, err := os.ReadFile("package.json")
 
 	if err != nil {
@@ -56,22 +58,34 @@ func LoadPackageConfig() PackageConfig {
 		return packageConfig
 	}
 
-	packageConfig.NodeVersion = strings.TrimSpace(data.Engines.Node)
-	packageConfig.NPMVersion = strings.TrimSpace(data.Engines.NPM)
-	packageConfig.PNPMVersion = strings.TrimSpace(data.Engines.PNPM)
-	packageConfig.YarnVersion = strings.TrimSpace(data.Engines.Yarn)
-
-	packageConfig.Dependencies = make([]string, 0, len(data.Dependencies))
-
-	for dep := range data.Dependencies {
-		packageConfig.Dependencies = append(packageConfig.Dependencies, dep)
-	}
-
-	packageConfig.DevDependencies = make([]string, 0, len(data.DevDependencies))
-
-	for devDep := range data.DevDependencies {
-		packageConfig.DevDependencies = append(packageConfig.DevDependencies, devDep)
-	}
+	// Extract information from parsed data.
+	parsePackageJSON(&packageConfig, &data)
 
 	return packageConfig
+}
+
+// parsePackageJSON extracts information from parsed package.json
+func parsePackageJSON(config *PackageConfig, data *PackageJSON) {
+	// Extract version requirements from engines section.
+	config.NodeVersion = strings.TrimSpace(data.Engines.Node)
+	config.NPMVersion = strings.TrimSpace(data.Engines.NPM)
+	config.PNPMVersion = strings.TrimSpace(data.Engines.PNPM)
+	config.YarnVersion = strings.TrimSpace(data.Engines.Yarn)
+
+	// Extract dependencies.
+	config.Dependencies = make([]string, 0, len(data.Dependencies))
+
+	for dep := range data.Dependencies {
+		config.Dependencies = append(config.Dependencies, dep)
+	}
+
+	utils.SortStrings(config.Dependencies)
+
+	config.DevDependencies = make([]string, 0, len(data.DevDependencies))
+
+	for devDep := range data.DevDependencies {
+		config.DevDependencies = append(config.DevDependencies, devDep)
+	}
+
+	utils.SortStrings(config.DevDependencies)
 }
