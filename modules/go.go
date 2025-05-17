@@ -5,7 +5,6 @@ import (
 	"PreFlight/utils"
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
@@ -42,7 +41,7 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 
 	successes = append(successes, "go.mod found.")
 
-	// VALIDATE Go VERSION.
+	// Validate Go version.
 	if goConfig.GoVersion != "" {
 		isValid, _ := utils.ValidateVersion(goVersion, goConfig.GoVersion)
 
@@ -83,16 +82,15 @@ func (g GoModule) CheckRequirements(ctx context.Context) (errors []string, warni
 	return errors, warnings, successes
 }
 
-// getGoVersion RETRIEVES THE INSTALLED Go VERSION.
+// getGoVersion retrieves the installed Go version.
 func getGoVersion(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "go", "version")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "go", "version")
 
 	if err != nil {
 		return "", err
 	}
 
-	versionOutput := strings.TrimSpace(string(output))
+	versionOutput := strings.TrimSpace(output)
 	parts := strings.Split(versionOutput, " ")
 
 	if len(parts) >= 3 {
@@ -102,18 +100,17 @@ func getGoVersion(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unexpected go version format: %s", versionOutput)
 }
 
-// getInstalledModules RETRIEVES THE INSTALLED Go MODULES.
+// getInstalledModules retrieves the installed Go modules.
 func getInstalledModules(ctx context.Context) map[string]struct{} {
 	modules := make(map[string]struct{})
 
-	cmd := exec.CommandContext(ctx, "go", "list", "-m", "all")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "go", "list", "-m", "all")
 
 	if err != nil {
 		return modules
 	}
 
-	for _, line := range strings.Split(string(output), "\n") {
+	for _, line := range strings.Split(output, "\n") {
 		if trimmed := strings.TrimSpace(line); trimmed != "" {
 			fields := strings.Fields(trimmed)
 

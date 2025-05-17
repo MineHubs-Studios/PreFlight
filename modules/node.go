@@ -5,7 +5,6 @@ import (
 	"PreFlight/utils"
 	"context"
 	"fmt"
-	"os/exec"
 	"strings"
 )
 
@@ -66,12 +65,11 @@ func (n NodeModule) CheckRequirements(ctx context.Context) (errors []string, war
 
 // getNodeVersion retrieves the installed Node.js version.
 func getNodeVersion(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "node", "--version")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "node", "--version")
 
 	if err != nil {
 		return "", fmt.Errorf("failed to run node --version: %w", err)
 	}
 
-	return strings.TrimSpace(string(output)), nil
+	return strings.TrimSpace(output), nil
 }

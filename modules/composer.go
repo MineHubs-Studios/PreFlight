@@ -6,7 +6,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os/exec"
 	"strings"
 	"sync"
 )
@@ -76,14 +75,13 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 
 // GetComposerVersion RETRIEVES THE INSTALLED Composer VERSION.
 func GetComposerVersion(ctx context.Context) (string, error) {
-	cmd := exec.CommandContext(ctx, "composer", "--version")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "composer", "--version")
 
 	if err != nil {
 		return "", err
 	}
 
-	parts := strings.Fields(strings.TrimSpace(string(output)))
+	parts := strings.Fields(strings.TrimSpace(output))
 
 	if len(parts) >= 3 {
 		return parts[2], nil
@@ -100,8 +98,7 @@ func GetInstalledDependencies(ctx context.Context, dependencies, devDependencies
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	cmd := exec.CommandContext(ctx, "composer", "show", "--format=json")
-	output, err := cmd.Output()
+	output, err := utils.RunCommand(ctx, "composer", "show", "--format=json")
 
 	if err == nil {
 		var data struct {
@@ -111,7 +108,7 @@ func GetInstalledDependencies(ctx context.Context, dependencies, devDependencies
 			} `json:"installed"`
 		}
 
-		if json.Unmarshal(output, &data) == nil {
+		if json.Unmarshal([]byte(output), &data) == nil {
 			for _, dependency := range data.Dependencies {
 				installedDependencies[dependency.Name] = dependency.Version
 			}
@@ -127,11 +124,10 @@ func GetInstalledDependencies(ctx context.Context, dependencies, devDependencies
 
 		go func(dep string) {
 			defer wg.Done()
-			cmd := exec.CommandContext(ctx, "composer", "show", dep)
-			output, err := cmd.Output()
+			output, err := utils.RunCommand(ctx, "composer", "show", dep)
 
 			if err == nil {
-				for _, line := range strings.Split(string(output), "\n") {
+				for _, line := range strings.Split(output, "\n") {
 					line = strings.TrimSpace(line)
 
 					if strings.HasPrefix(line, "versions :") || strings.HasPrefix(line, "version :") {

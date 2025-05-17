@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -19,15 +18,15 @@ func (p PackageModule) Name() string {
 	return "Package"
 }
 
-// CheckRequirements VERIFIES Package CONFIGURATIONS AND DEPENDENCIES.
+// CheckRequirements verifies package configurations and dependencies.
 func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
-	// CHECK IF CONTEXT IS CANCELED.
+	// Check if context is canceled.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
 
 	packageConfig := pm.LoadPackageConfig()
-	pm := packageConfig.PackageManager
+	pkg := packageConfig.PackageManager
 
 	if !packageConfig.HasConfig {
 		if fi, errModules := os.Stat("node_modules"); os.IsNotExist(errModules) || !fi.IsDir() {
@@ -36,8 +35,8 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 
 		errors = append(errors, "package.json not found.")
 
-		if pm.LockFile != "" {
-			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pm.LockFile))
+		if pkg.LockFile != "" {
+			warnings = append(warnings, fmt.Sprintf("package.json not found, but %s exists. Ensure package.json is included in your project.", pkg.LockFile))
 		} else {
 			warnings = append(warnings, "Neither package.json nor lock files (package-lock.json, bun.lock, pnpm-lock.yaml or yarn.lock) were found.")
 		}
@@ -45,7 +44,7 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		return errors, warnings, successes
 	}
 
-	// HANDLE ENGINES IN package.json.
+	// Handle engines in package.json.
 	engines := map[string]string{
 		"node": packageConfig.NodeVersion,
 		"npm":  packageConfig.NPMVersion,
@@ -54,23 +53,21 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 	}
 
 	for cmd, requiredVersion := range engines {
-		if requiredVersion == "" || (cmd != "node" && cmd != pm.Command) {
+		if requiredVersion == "" || (cmd != "node" && cmd != pkg.Command) {
 			continue
 		}
 
-		out, err := exec.CommandContext(ctx, cmd, "--version").Output() //nolint:gosec
+		installedVersion, err := utils.RunCommand(ctx, cmd, "--version")
 
 		if err != nil {
 			warnings = append(warnings, fmt.Sprintf("Could not retrieve version for '%s': %v", cmd, err))
 			continue
 		}
 
-		installedVersion := strings.TrimSpace(string(out))
-
 		if valid, _ := utils.ValidateVersion(installedVersion, requiredVersion); !valid {
 			warnings = append(warnings, fmt.Sprintf("Missing %s%s (%s ⟶ required %s).", utils.Reset, cmd, installedVersion, requiredVersion))
 		} else {
-			// ENSURE ONLY ONE SUCCESS MESSAGE, PRIORITIZING Bun FIRST, Yarn SECOND, PNPM THIRD AND NPM LAST.
+			// Ensure only one success message, prioritizing Bun first, Yarn second, PNPM third and NPM last.
 			if len(successes) == 0 || cmd == "bun" ||
 				(cmd == "yarn" && !strings.Contains(successes[0], "bun")) ||
 				(cmd == "pnpm" && !strings.Contains(successes[0], "bun") && !strings.Contains(successes[0], "yarn")) ||
@@ -91,14 +88,14 @@ func (p PackageModule) CheckRequirements(ctx context.Context) (errors []string, 
 		if version, installed := installedPackages[dep]; installed {
 			successes = append(successes, fmt.Sprintf("Installed package %s%s (%s).", utils.Reset, dep, version))
 		} else {
-			errors = append(errors, fmt.Sprintf("Missing package %s%s, Run `%s install %s`.", utils.Reset, dep, pm.Command, dep))
+			errors = append(errors, fmt.Sprintf("Missing package %s%s, Run `%s install %s`.", utils.Reset, dep, pkg.Command, dep))
 		}
 	}
 
 	return errors, warnings, successes
 }
 
-// getInstalledPackages RETRIEVES THE INSTALLED Package DEPENDENCIES.
+// getInstalledPackages retrieves the installed package dependencies.
 func getInstalledPackages() (map[string]string, error) {
 	installedPackages := make(map[string]string)
 
@@ -108,7 +105,6 @@ func getInstalledPackages() (map[string]string, error) {
 		return nil, packageConfig.Error
 	}
 
-	// COMBINE DEPENDENCIES AND DEV DEPENDENCIES.
 	for _, dep := range packageConfig.Dependencies {
 		installedPackages[dep] = "unknown"
 	}
@@ -178,14 +174,14 @@ func getInstalledPackages() (map[string]string, error) {
 
 	wg.Wait()
 
-	// FALLBACK: SCAN node_modules IF NO INSTALLED PACKAGES FOUND.
+	// FALLBACK: Scan node_modules if no installed packages found.
 	if len(installedPackages) == 0 {
 		if entries, err := os.ReadDir("node_modules"); err == nil {
 			for _, entry := range entries {
 				if entry.IsDir() {
 					name := entry.Name()
 
-					// HANDLE SCOPED PACKAGES (@org/package).
+					// Handle scoped packages (@org/package).
 					if strings.HasPrefix(name, "@") {
 						if scopedEntries, err := os.ReadDir(filepath.Join("node_modules", name)); err == nil {
 							for _, scopedEntry := range scopedEntries {
@@ -221,7 +217,7 @@ func getInstalledPackages() (map[string]string, error) {
 							}
 						}
 					} else {
-						// DEFAULT PACKAGE HANDLING.
+						// Default package handling.
 						if strings.Contains(name, "..") || strings.Contains(name, "/") {
 							continue
 						}
