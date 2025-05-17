@@ -153,7 +153,6 @@ func printResults(results []CheckResult) {
 	}
 }
 
-// printMessages
 func printMessages(ow *utils.OutputWriter, messages []string, color string, symbol string) {
 	var isUnderVersionMatch bool
 

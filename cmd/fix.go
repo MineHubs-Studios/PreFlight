@@ -8,6 +8,7 @@ import (
 
 var forceFix bool
 
+// fixCmd represents the fix command.
 var fixCmd = &cobra.Command{
 	Use:   "fix",
 	Short: "Fix missing dependencies (Composer & npm)",

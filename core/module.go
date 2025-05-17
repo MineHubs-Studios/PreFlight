@@ -8,31 +8,31 @@ import (
 	"sync"
 )
 
-// Module DEFINES THE CONTRACT FOR SYSTEM CHECK MODULES.
+// Module defines the contract for system check modules.
 type Module interface {
 	Name() string
 	CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string)
 }
 
 var (
-	// modulesMutex PROTECTS registeredModules AND availableModules FROM CONCURRENT MODIFICATIONS.
+	// modulesMutex protects registeredModules and availableModules from concurrent modifications.
 	modulesMutex sync.RWMutex
 
-	// registeredModules CONTAINS THE ACTIVE MODULES.
+	// registeredModules contains the active module.
 	registeredModules = make(map[string]Module)
 
-	// availableModules CONTAINS ALL KNOWN MODULES THAT ARE REGISTERED.
+	// availableModules contains all known modules that are registered.
 	availableModules = make(map[string]Module)
 )
 
-// SortType DEFINES THE SORTING METHOD TO BE APPLIED TO MODULES.
+// SortType defines the sorting method to be applied to modules.
 type SortType string
 
 const (
-	// SortByPriority SORTS MODULES BASED ON A PREDEFINED PRIORITY ORDER.
+	// SortByPriority sorts modules based on a predefined priority order.
 	SortByPriority SortType = "priority"
 
-	// SortByName SORTS MODULES ALPHABETICALLY BY NAME.
+	// SortByName sorts modules alphabetically by name.
 	SortByName SortType = "name"
 )
 
@@ -48,7 +48,7 @@ var defaultPriority = map[string]int{
 
 const fallbackPriority = 1000
 
-// RegisterModule REGISTERS A NEW MODULE IF IT DOESN'T ALREADY EXIST.
+// RegisterModule registers a new module if it doesn't already exist.
 func RegisterModule(module Module, moduleNames ...string) error {
 	modulesMutex.Lock()
 	defer modulesMutex.Unlock()
@@ -64,7 +64,7 @@ func RegisterModule(module Module, moduleNames ...string) error {
 	return registerSpecificModules(moduleNames)
 }
 
-// registerSingleModule HELPER FUNCTION TO REGISTER A SINGLE MODULE.
+// registerSingleModule register a single module.
 func registerSingleModule(module Module) error {
 	if _, exists := registeredModules[module.Name()]; exists {
 		return fmt.Errorf("module with name '%s' is already registered", module.Name())
@@ -74,7 +74,7 @@ func registerSingleModule(module Module) error {
 	return nil
 }
 
-// registerAllModules HELPER FUNCTION TO REGISTER ALL AVAILABLE MODULES.
+// registerAllModules register all available modules.
 func registerAllModules() error {
 	var errs []string
 
@@ -93,7 +93,7 @@ func registerAllModules() error {
 	return nil
 }
 
-// registerSpecificModules HELPER FUNCTION TO REGISTER SPECIFIC MODULES BY NAME.
+// registerSpecificModules register specific modules by name.
 func registerSpecificModules(moduleNames []string) error {
 	var errs []string
 
@@ -120,7 +120,7 @@ func registerSpecificModules(moduleNames []string) error {
 	return nil
 }
 
-// GetModules RETURNS A COPY OF THE REGISTERED MODULES.
+// GetModules returns a copy of the registered modules.
 func GetModules() []Module {
 	modulesMutex.RLock()
 	defer modulesMutex.RUnlock()
@@ -134,7 +134,7 @@ func GetModules() []Module {
 	return modules
 }
 
-// RegisterAvailableModule ADDS A MODULE TO THE LIST OF AVAILABLE MODULES.
+// RegisterAvailableModule adds a module to the list of available modules.
 func RegisterAvailableModule(name string, module Module) {
 	if module == nil {
 		return
@@ -146,7 +146,7 @@ func RegisterAvailableModule(name string, module Module) {
 	availableModules[name] = module
 }
 
-// SortModules SORTS MODULES BASED ON THE SPECIFIED SORT TYPE.
+// SortModules sorts modules based on the specified sort type.
 func SortModules(modules []Module, sortType ...SortType) []Module {
 	sortedModules := make([]Module, len(modules))
 	copy(sortedModules, modules)
@@ -171,6 +171,7 @@ func SortModules(modules []Module, sortType ...SortType) []Module {
 	return sortedModules
 }
 
+// getPriority retrieves the priority of a module by its name.
 func getPriority(name string) int {
 	if p, ok := defaultPriority[strings.ToLower(name)]; ok {
 		return p

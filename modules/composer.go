@@ -16,9 +16,9 @@ func (c ComposerModule) Name() string {
 	return "Composer"
 }
 
-// CheckRequirements VERIFIES Composer CONFIGURATIONS AND DEPENDENCIES.
+// CheckRequirements verifies Composer configurations and dependencies.
 func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string, warnings []string, successes []string) {
-	// CHECK IF CONTEXT IS CANCELED.
+	// Check if context is canceled.
 	if ctx.Err() != nil {
 		return nil, nil, nil
 	}
@@ -73,7 +73,7 @@ func (c ComposerModule) CheckRequirements(ctx context.Context) (errors []string,
 	return errors, warnings, successes
 }
 
-// GetComposerVersion RETRIEVES THE INSTALLED Composer VERSION.
+// GetComposerVersion retrieves the installed composer version.
 func GetComposerVersion(ctx context.Context) (string, error) {
 	output, err := utils.RunCommand(ctx, "composer", "--version")
 
@@ -90,7 +90,7 @@ func GetComposerVersion(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("unexpected composer version format: %s", output)
 }
 
-// GetInstalledDependencies RETRIEVES THE INSTALLED Composer DEPENDENCIES.
+// GetInstalledDependencies retrieves the installed composer dependencies.
 func GetInstalledDependencies(ctx context.Context, dependencies, devDependencies []string) map[string]string {
 	installedDependencies := make(map[string]string)
 	allDeps := append(dependencies, devDependencies...)

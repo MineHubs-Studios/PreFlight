@@ -8,10 +8,10 @@ import (
 )
 
 var (
-	// Version SPECIFY THE CURRENT VERSION OF PreFlight.
-	Version = "1.0.0"
+	Version = "1.2.0"
 )
 
+// versionCmd represents the version command.
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Shows PreFlight version information",
@@ -24,7 +24,7 @@ var versionCmd = &cobra.Command{
 		ow.Println(utils.Bold + utils.Cyan + "PreFlight - Version Information" + utils.Reset + utils.Bold)
 		ow.Println("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
 
-		// WAIT FOR ASYNC TAG FETCH.
+		// Wait for async tag fetch.
 		<-done
 
 		ow.Printf("Version:         %s\n", versionData.Version)
